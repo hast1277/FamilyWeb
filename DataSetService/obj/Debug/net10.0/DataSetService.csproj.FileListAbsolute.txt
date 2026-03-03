@@ -1,0 +1,11 @@
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/bin/Debug/net10.0/DataSetService.deps.json
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/bin/Debug/net10.0/DataSetService.dll
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/bin/Debug/net10.0/DataSetService.pdb
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/DataSetService.GeneratedMSBuildEditorConfig.editorconfig
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/DataSetService.AssemblyInfoInputs.cache
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/DataSetService.AssemblyInfo.cs
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/DataSetService.csproj.CoreCompileInputs.cache
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/DataSetService.dll
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/refint/DataSetService.dll
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/DataSetService.pdb
+/home/stefan-hall/repos/FamilyWebBlazorServer/DataSetService/obj/Debug/net10.0/ref/DataSetService.dll

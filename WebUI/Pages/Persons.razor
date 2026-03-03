@@ -1,0 +1,37 @@
+@page "/persons"
+@inherits ComponentBase
+
+<h3>Persons</h3>
+
+@if (persons == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (persons.Count == 0)
+{
+    <p>No records found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                @foreach (var col in persons.First().Keys)
+                {
+                    <th>@col</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in persons)
+            {
+                <tr>
+                    @foreach (var val in row.Values)
+                    {
+                        <td>@val</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
