@@ -8,6 +8,10 @@
     <Compile Remove="../DataSetService/**" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../DataSetService/DataSetService.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
   </ItemGroup>
 </Project>
