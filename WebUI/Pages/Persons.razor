@@ -1,5 +1,6 @@
 @page "/persons"
 @inherits ComponentBase
+@using DataSetService.Models
 
 <h3>Persons</h3>
 
@@ -16,20 +17,22 @@ else
     <table class="table">
         <thead>
             <tr>
-                @foreach (var col in persons.First().Keys)
-                {
-                    <th>@col</th>
-                }
+                <th>ID</th>
+                <th>Efternamn</th>
+                <th>Förnamn</th>
+                <th>Kön</th>
+                <th>Födelsedag</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var row in persons)
+            @foreach (var p in persons)
             {
                 <tr>
-                    @foreach (var val in row.Values)
-                    {
-                        <td>@val</td>
-                    }
+                    <td>@p.Id</td>
+                    <td><a href="/persons/@p.Id">@p.SurName</a></td>
+                    <td>@p.FirstName</td>
+                    <td>@p.Sex</td>
+                    <td>@p.Birthday</td>
                 </tr>
             }
         </tbody>

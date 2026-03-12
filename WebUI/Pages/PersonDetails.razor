@@ -1,0 +1,81 @@
+@page "/persons/{Id:long}"
+@using DataSetService
+@using DataSetService.Models
+@inject PersonService PersonService
+
+@if (!loaded)
+{
+    <p><em>Laddar...</em></p>
+}
+else if (person == null)
+{
+    <p>Person hittades inte.</p>
+}
+else
+{
+    <div class="person-details">
+        <img src="@GetPhotoUrl(person)" alt="@GetPhotoAltText(person)" class="person-photo"
+             onerror="this.onerror=null; this.src='@PlaceholderPhotoPath'" />
+
+        <table class="table table-borderless person-info">
+            <tbody>
+                <tr>
+                    <td><strong>Förnamn</strong></td>
+                    <td>@person.FirstName</td>
+                    <td><strong>Efternamn</strong></td>
+                    <td>@person.SurName</td>
+                    <td><strong>Kön</strong></td>
+                    <td>@person.Sex</td>
+                </tr>
+                <tr>
+                    <td><strong>Född</strong></td>
+                    <td>@person.Birthday</td>
+                    @if (baptism != null)
+                    {
+                        <td><strong>Döpt</strong></td>
+                        <td>@baptism.BaptismDate</td>
+                    }
+                </tr>
+            </tbody>
+        </table>
+
+        @if (!string.IsNullOrWhiteSpace(person.Notes))
+        {
+            <textarea rows="4" cols="83" readonly>@person.Notes</textarea>
+        }
+    </div>
+}
+
+@code {
+    private const string PhotoBasePath = "/img/Family/";
+    private const string PlaceholderPhotoFileName = "EmptyPhoto.png";
+    private const string PlaceholderPhotoPath = $"{PhotoBasePath}{PlaceholderPhotoFileName}";
+
+    [Parameter] public long Id { get; set; }
+
+    private Person? person;
+    private Baptism? baptism;
+    private bool loaded;
+
+    protected override void OnParametersSet()
+    {
+        loaded  = false;
+        person  = PersonService.GetPerson(Id);
+        baptism = PersonService.GetBaptism(Id);
+        loaded  = true;
+    }
+
+    private static string GetPhotoUrl(Person person)
+    {
+        if (string.IsNullOrWhiteSpace(person.Photo))
+            return PlaceholderPhotoPath;
+
+        return $"{PhotoBasePath}{person.Photo}";
+    }
+
+    private static string GetPhotoAltText(Person person)
+    {
+        var fullName = string.Join(" ", new[] { person.FirstName, person.SurName }.Where(name => !string.IsNullOrWhiteSpace(name)));
+        return string.IsNullOrWhiteSpace(fullName) ? "Foto saknas" : $"Foto på {fullName}";
+    }
+}

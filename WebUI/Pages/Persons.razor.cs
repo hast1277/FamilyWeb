@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Components;
 using DataSetService;
+using DataSetService.Models;
 
 
 namespace FamilyWebBlazorServer.Pages
 {
     public partial class Persons : ComponentBase
     {
-        protected List<Dictionary<string, object?>>? persons;
+        protected List<Person>? persons;
 
         protected override async Task OnInitializedAsync()
         {

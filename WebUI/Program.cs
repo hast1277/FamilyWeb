@@ -10,6 +10,9 @@ builder.Services.AddServerSideBlazor();
 var dbPath = builder.Configuration["DbPath"] ?? "/home/stefan-hall/gullberg.sqlite";
 builder.Services.AddSingleton(new UserService(dbPath));
 
+var familyDbPath = builder.Configuration["FamilyDbPath"] ?? "/var/lib/FamilyWeb/gullberg.sqlite";
+builder.Services.AddSingleton(new PersonService(familyDbPath));
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
