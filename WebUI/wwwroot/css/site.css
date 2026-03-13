@@ -6,7 +6,6 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
     display: flex;
     align-items: flex-start;
     gap: 1.5rem;
-    flex-wrap: wrap;
 }
 
 .person-photo {
@@ -16,6 +15,7 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
 }
 
 .person-info {
-    flex: 1 1 24rem;
+    flex: 1 1 auto;
+    min-width: 0;
     margin-bottom: 0;
 }
