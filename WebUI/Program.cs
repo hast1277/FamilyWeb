@@ -1,4 +1,5 @@
 using DataSetService;
+using DataSetService.FamilyTree;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ builder.Services.AddSingleton(new UserService(dbPath));
 
 var familyDbPath = builder.Configuration["FamilyDbPath"] ?? "/var/lib/FamilyWeb/gullberg.sqlite";
 builder.Services.AddSingleton(new PersonService(familyDbPath));
+builder.Services.AddSingleton(new FamilyTreeService(familyDbPath));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
