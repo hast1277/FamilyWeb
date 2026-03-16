@@ -1,0 +1,157 @@
+@page "/tree"
+@page "/tree/{RootId:long}"
+
+@using Blazor.Diagrams
+@using Blazor.Diagrams.Components
+@using Blazor.Diagrams.Components.Widgets
+@using Blazor.Diagrams.Core.Geometry
+@using Blazor.Diagrams.Core.Models
+@using DataSetService
+@using DataSetService.FamilyTree
+@using DataSetService.Models
+@using FamilyWebBlazorServer.Diagramming.FamilyTree
+@using Microsoft.AspNetCore.Components.Forms
+@inject NavigationManager Navigation
+@inject PersonService PersonService
+@inject FamilyTreeService FamilyTreeService
+
+<h3>Familjeträd</h3>
+
+<div class="mb-3 d-flex flex-wrap align-items-end gap-2">
+    <div style="min-width: 280px;">
+        <label class="form-label">Rotperson</label>
+        <InputSelect class="form-select" @bind-Value="selectedRootId">
+            @if (persons is not null)
+            {
+                @foreach (var p in persons)
+                {
+                    <option value="@p.Id">@p.SurName @p.FirstName (@p.Id)</option>
+                }
+            }
+        </InputSelect>
+    </div>
+    <button class="btn btn-primary" @onclick="ShowTree">Visa</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="family-tree-container">
+    <CascadingValue Value="diagram">
+        <DiagramCanvas>
+            <Widgets>
+                <NavigatorWidget Width="220"
+                                 Height="160"
+                                 Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid #00000033; background: #ffffffcc;" />
+                <SelectionBoxWidget />
+            </Widgets>
+        </DiagramCanvas>
+    </CascadingValue>
+</div>
+
+@code {
+    [Parameter] public long RootId { get; set; }
+
+    private BlazorDiagram diagram = default!;
+    private List<Person>? persons;
+    private long selectedRootId;
+    private string? error;
+
+    protected override void OnInitialized()
+    {
+        diagram = new BlazorDiagram();
+        diagram.RegisterComponent<PersonNodeModel, PersonNodeWidget>();
+        diagram.RegisterComponent<UnionNodeModel, UnionNodeWidget>();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (RootId > 0)
+            selectedRootId = RootId;
+
+        if (selectedRootId > 0)
+            BuildDiagram(selectedRootId);
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        persons = PersonService.GetAllPersons();
+        persons = persons.OrderBy(p => p.SurName).ThenBy(p => p.FirstName).ThenBy(p => p.Id).ToList();
+
+        if (selectedRootId <= 0)
+            selectedRootId = RootId > 0 ? RootId : (persons.FirstOrDefault()?.Id ?? 0);
+
+        if (selectedRootId > 0)
+            BuildDiagram(selectedRootId);
+
+        return Task.CompletedTask;
+    }
+
+    private void ShowTree()
+    {
+        if (selectedRootId <= 0)
+            return;
+
+        Navigation.NavigateTo($"/tree/{selectedRootId}");
+    }
+
+    private void BuildDiagram(long rootId)
+    {
+        error = null;
+        diagram.Nodes.Clear();
+        diagram.Links.Clear();
+
+        FamilyTreeDto tree;
+        try
+        {
+            tree = FamilyTreeService.BuildTree(rootId);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return;
+        }
+
+        var nodeById = new Dictionary<string, NodeModel>(StringComparer.Ordinal);
+
+        foreach (var n in tree.Nodes)
+        {
+            var x = n.X ?? 0;
+            var y = n.Y ?? 0;
+
+            NodeModel model;
+            if (string.Equals(n.Type, "person", StringComparison.OrdinalIgnoreCase) && n.PersonId is long pid)
+            {
+                model = new PersonNodeModel(
+                    id: n.Id,
+                    position: new Point(x, y),
+                    personId: pid,
+                    label: n.Label ?? $"Person {pid}",
+                    photo: n.Photo);
+            }
+            else
+            {
+                model = new UnionNodeModel(n.Id, new Point(x, y));
+            }
+
+            nodeById[n.Id] = model;
+            diagram.Nodes.Add(model);
+        }
+
+        foreach (var e in tree.Edges)
+        {
+            if (!nodeById.TryGetValue(e.FromId, out var from) || !nodeById.TryGetValue(e.ToId, out var to))
+                continue;
+
+            var link = new LinkModel(from, to);
+            if (string.Equals(e.Type, "child", StringComparison.OrdinalIgnoreCase))
+            {
+                link.TargetMarker = LinkMarker.Arrow;
+            }
+
+            diagram.Links.Add(link);
+        }
+    }
+}

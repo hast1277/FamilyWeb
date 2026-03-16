@@ -105,3 +105,57 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
         text-align: center;
     }
 }
+
+.family-tree-container {
+    height: 80vh;
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    position: relative;
+}
+
+.family-person-node {
+    width: 180px;
+    height: 70px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #ced4da;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.family-person-node:hover {
+    border-color: #0d6efd;
+}
+
+.family-person-photo {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #dee2e6;
+    flex: 0 0 auto;
+}
+
+.family-person-label {
+    font-size: 0.95rem;
+    line-height: 1.15;
+    font-weight: 600;
+    color: #212529;
+}
+
+.family-union-node {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #0d6efd;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #0d6efd;
+}

@@ -1,0 +1,31 @@
+@using Blazor.Diagrams.Core.Models
+@inject NavigationManager Navigation
+
+<div class="family-person-node" title="@NodeLabel" @onclick="NavigateToPerson">
+    @if (!string.IsNullOrWhiteSpace(PhotoUrl))
+    {
+        <img class="family-person-photo" src="@PhotoUrl" alt="" onerror="this.onerror=null; this.style.display='none';" />
+    }
+    <div class="family-person-label">@NodeLabel</div>
+</div>
+
+@code {
+    [Parameter] public NodeModel Node { get; set; } = default!;
+
+    private PersonNodeModel? Model => Node as PersonNodeModel;
+
+    private string NodeLabel => Model?.Label ?? string.Empty;
+
+    private string? PhotoUrl
+        => Model?.Photo is { Length: > 0 } fileName
+            ? $"/img/Family/{fileName}"
+            : null;
+
+    private void NavigateToPerson()
+    {
+        if (Model is null)
+            return;
+
+        Navigation.NavigateTo($"/persons/{Model.PersonId}");
+    }
+}
