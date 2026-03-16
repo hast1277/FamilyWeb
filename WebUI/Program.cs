@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddMemoryCache();
 
 var dbPath = builder.Configuration["DbPath"] ?? "/home/stefan-hall/gullberg.sqlite";
 builder.Services.AddSingleton(new UserService(dbPath));

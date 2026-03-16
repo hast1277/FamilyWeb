@@ -11,9 +11,11 @@
 @using DataSetService.Models
 @using FamilyWebBlazorServer.Diagramming.FamilyTree
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Caching.Memory
 @inject NavigationManager Navigation
 @inject PersonService PersonService
 @inject FamilyTreeService FamilyTreeService
+@inject IMemoryCache Cache
 
 <h3>Familjeträd</h3>
 
@@ -58,6 +60,7 @@
     private List<Person>? persons;
     private long selectedRootId;
     private string? error;
+    private long? lastBuiltRootId;
 
     protected override void OnInitialized()
     {
@@ -99,14 +102,39 @@
 
     private void BuildDiagram(long rootId)
     {
+        if (lastBuiltRootId == rootId && string.IsNullOrWhiteSpace(error) && diagram.Nodes.Count > 0)
+            return;
+
         error = null;
         diagram.Nodes.Clear();
         diagram.Links.Clear();
 
+        var buildOptions = new FamilyTreeBuildOptions
+        {
+            MaxDepth = 6,
+            MaxNodes = 400,
+            OnlyExpandChildrenWithFamilies = true
+        };
+
+        var layoutOptions = new FamilyTreeLayoutOptions
+        {
+            RowSpacing = 140,
+            ColSpacing = 220,
+            SpouseSpacing = 180,
+            SiblingGapSlots = 1
+        };
+
+        var cacheKey = $"family-tree:{rootId}:d{buildOptions.MaxDepth}:n{buildOptions.MaxNodes}:only{buildOptions.OnlyExpandChildrenWithFamilies}:rs{layoutOptions.RowSpacing}:cs{layoutOptions.ColSpacing}:ss{layoutOptions.SpouseSpacing}:gap{layoutOptions.SiblingGapSlots}";
+
         FamilyTreeDto tree;
         try
         {
-            tree = FamilyTreeService.BuildTree(rootId);
+            tree = Cache.GetOrCreate(cacheKey, entry =>
+            {
+                entry.SlidingExpiration = TimeSpan.FromMinutes(2);
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+                return FamilyTreeService.BuildTree(rootId, buildOptions, layoutOptions);
+            })!;
         }
         catch (Exception ex)
         {
@@ -153,5 +181,7 @@
 
             diagram.Links.Add(link);
         }
+
+        lastBuiltRootId = rootId;
     }
 }
