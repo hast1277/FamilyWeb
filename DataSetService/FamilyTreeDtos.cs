@@ -10,6 +10,12 @@ public sealed record FamilyTreeBuildOptions
     /// This matches the legacy MVC behavior and keeps the tree size manageable.
     /// </summary>
     public bool OnlyExpandChildrenWithFamilies { get; init; } = true;
+
+    /// <summary>
+    /// If true, also follows the secondary spouse family (Persons.IsSpouseInFamily2).
+    /// The legacy MVC implementation does not, so this is false by default for parity.
+    /// </summary>
+    public bool IncludeSpouseFamily2 { get; init; } = false;
 }
 
 public sealed record FamilyTreeLayoutOptions

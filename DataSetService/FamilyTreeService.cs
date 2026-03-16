@@ -187,7 +187,8 @@ public sealed class FamilyTreeService
 
             var spouseFamilies = new List<long>();
             if (p.SpouseFamily1 is not null) spouseFamilies.Add(p.SpouseFamily1.Value);
-            if (p.SpouseFamily2 is not null && p.SpouseFamily2 != p.SpouseFamily1) spouseFamilies.Add(p.SpouseFamily2.Value);
+            if (buildOptions.IncludeSpouseFamily2 && p.SpouseFamily2 is not null && p.SpouseFamily2 != p.SpouseFamily1)
+                spouseFamilies.Add(p.SpouseFamily2.Value);
 
             foreach (var familyId in spouseFamilies)
             {
