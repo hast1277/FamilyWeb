@@ -70,6 +70,16 @@ public class PersonService
         return dr.Read() ? MapPerson(dr) : null;
     }
 
+    public void UpdatePersonPhoto(long id, string photoFileName)
+    {
+        using var conn = OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Persons SET Photo = @photo WHERE ID = @id";
+        cmd.Parameters.AddWithValue("@photo", photoFileName);
+        cmd.Parameters.AddWithValue("@id", id.ToString());
+        cmd.ExecuteNonQuery();
+    }
+
     // Returns all family members belonging to the given family ID.
     public List<FamilyRelation> GetFamilyRelations(long familyId)
     {

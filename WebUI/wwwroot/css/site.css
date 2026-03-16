@@ -31,6 +31,13 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
     margin-bottom: 0;
 }
 
+.person-photo-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .person-header {
     display: flex;
     align-items: center;
@@ -54,6 +61,39 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
 .person-info {
     text-align: left;
     margin-top: 20px;
+}
+
+.photo-upload-button {
+    display: inline-block;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid #6c757d;
+    border-radius: 999px;
+    background: #f8f9fa;
+    color: #212529;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.photo-upload-button:hover {
+    background: #e9ecef;
+}
+
+.photo-upload-button.disabled {
+    opacity: 0.65;
+    cursor: wait;
+    pointer-events: none;
+}
+
+.person-photo-input {
+    display: none;
+}
+
+.photo-upload-status {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #495057;
+    max-width: 180px;
 }
 
 @media (max-width: 480px) {
