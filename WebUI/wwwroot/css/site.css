@@ -2,20 +2,66 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
 .content { padding-top: 1rem; }
 .top-row { height: 3.5rem; }
 
-.person-details-header {
+/*.person-details-header {
     display: flex;
     align-items: flex-start;
     gap: 1.5rem;
 }
+*/
+
+.card {
+    background: #fff;
+    width: 320px;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-align: center;
+}
+
+.person-details .card {
+    margin: 0 auto;
+}
+
 
 .person-photo {
-    max-width: 180px;
-    height: auto;
-    flex: 0 0 auto;
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-bottom: 0;
+}
+
+.person-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.person-name {
+    text-align: left;
+}
+
+.person-name h4 {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.person-name h4 + h4 {
+    margin-top: 0.25rem;
 }
 
 .person-info {
-    flex: 1 1 auto;
-    min-width: 0;
-    margin-bottom: 0;
+    text-align: left;
+    margin-top: 20px;
+}
+
+@media (max-width: 480px) {
+    .person-header {
+        flex-direction: column;
+    }
+
+    .person-name {
+        text-align: center;
+    }
 }

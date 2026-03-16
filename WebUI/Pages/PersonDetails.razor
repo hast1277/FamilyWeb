@@ -15,20 +15,19 @@ else if (person == null)
 else
 {
     <div class="person-details">
-        <div class="person-details-header">
-            <img src="@GetPhotoUrl(person)" alt="@GetPhotoAltText(person)" class="person-photo"
-                 onerror="this.onerror=null; this.src='@PlaceholderPhotoPath'" />
+        <div class="card">
+            <div class="person-header">
+                <img src="@GetPhotoUrl(person)" alt="@GetPhotoAltText(person)" class="person-photo"
+                     onerror="this.onerror=null; this.src='@PlaceholderPhotoPath'" />
+
+                <div class="person-name">
+                    <h4>@person.FirstName</h4>
+                    <h4>@person.SurName</h4>
+                </div>
+            </div>
 
             <table class="table table-borderless person-info">
                 <tbody>
-                    <tr>
-                        <td><strong>Förnamn</strong></td>
-                        <td>@person.FirstName</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Efternamn</strong></td>
-                        <td>@person.SurName</td>
-                    </tr>
                     <tr>
                         <td><strong>Kön</strong></td>
                         <td>@person.Sex</td>
