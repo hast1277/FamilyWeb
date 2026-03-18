@@ -206,6 +206,45 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
     box-shadow: 0 0 0 1px #0d6efd;
 }
 
+.person-card-details-link {
+    margin-top: -0.25rem;
+    padding-left: 8.5rem;
+    text-align: left;
+}
+
+.person-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    z-index: 1060;
+}
+
+.person-modal {
+    width: 100%;
+    max-width: 680px;
+    max-height: 85vh;
+    overflow: auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.person-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.person-modal-body {
+    padding: 1rem;
+}
+
 @media (max-width: 992px) {
     .page {
         flex-direction: column;

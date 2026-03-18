@@ -1,0 +1,81 @@
+@inherits ComponentBase
+@using Microsoft.AspNetCore.Components.Forms
+
+@if (!loaded)
+{
+	<p><em>Laddar persondetaljer...</em></p>
+}
+else if (person == null)
+{
+	<p>Person hittades inte.</p>
+}
+else
+{
+	<div class="person-header mb-3">
+		<div class="person-photo-section">
+			<img src="@GetPhotoUrl(person)" alt="@GetPhotoAltText(person)" class="person-photo"
+				 onerror="this.onerror=null; this.src='@PlaceholderPhotoPath'" />
+
+			<label class="photo-upload-button @(isUploading ? "disabled" : string.Empty)" for="@PhotoInputId">
+				@(isUploading ? "Laddar upp..." : "Byt foto")
+			</label>
+			<InputFile id="@PhotoInputId"
+					   OnChange="OnPhotoSelectedAsync"
+					   accept="image/png,image/jpeg,image/webp,image/gif"
+					   class="person-photo-input" />
+
+			@if (!string.IsNullOrWhiteSpace(photoUploadMessage))
+			{
+				<p class="photo-upload-status">@photoUploadMessage</p>
+			}
+		</div>
+
+		<div class="person-name">
+			<h4>@person.SurName</h4>
+			<h4>@person.FirstName</h4>
+		</div>
+	</div>
+
+	<table class="table table-sm table-borderless mb-0">
+		<tbody>
+			<tr>
+				<td><strong>ID</strong></td>
+				<td>@person.Id</td>
+			</tr>
+			<tr>
+				<td><strong>Namn</strong></td>
+				<td>@person.SurName @person.FirstName</td>
+			</tr>
+			<tr>
+				<td><strong>Kon</strong></td>
+				<td>@person.Sex</td>
+			</tr>
+			<tr>
+				<td><strong>Fodd</strong></td>
+				<td>@person.Birthday</td>
+			</tr>
+			@if (baptism != null)
+			{
+				<tr>
+					<td><strong>Dopt</strong></td>
+					<td>@baptism.BaptismDate</td>
+				</tr>
+				@if (!string.IsNullOrWhiteSpace(baptism.BaptismPlace))
+				{
+					<tr>
+						<td><strong>Dopplats</strong></td>
+						<td>@baptism.BaptismPlace</td>
+					</tr>
+				}
+			}
+		</tbody>
+	</table>
+
+	@if (!string.IsNullOrWhiteSpace(person.Notes))
+	{
+		<div class="mt-3">
+			<label class="form-label"><strong>Noteringar</strong></label>
+			<textarea class="form-control" rows="4" readonly>@person.Notes</textarea>
+		</div>
+	}
+}

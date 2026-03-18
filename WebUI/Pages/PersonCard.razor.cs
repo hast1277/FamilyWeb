@@ -31,6 +31,7 @@ namespace FamilyWebBlazorServer.Pages
         private Baptism? baptism;
         private bool loaded;
         private bool isUploading;
+        private bool showPersonDetailsModal;
         private string? photoUploadMessage;
 
         protected override void OnParametersSet()
@@ -39,7 +40,28 @@ namespace FamilyWebBlazorServer.Pages
             person  = PersonService.GetPerson(Id);
             baptism = PersonService.GetBaptism(Id);
             loaded  = true;
+            showPersonDetailsModal = false;
             photoUploadMessage = null;
+        }
+
+        private void OpenPersonDetailsModal()
+        {
+            showPersonDetailsModal = true;
+        }
+
+        private void ClosePersonDetailsModal()
+        {
+            showPersonDetailsModal = false;
+        }
+
+        private Task HandlePersonDetailsPhotoUpdated(string? photoFileName)
+        {
+            if (person != null)
+            {
+                person.Photo = photoFileName;
+            }
+
+            return Task.CompletedTask;
         }
 
         private async Task OnPhotoSelectedAsync(InputFileChangeEventArgs e)
