@@ -7,7 +7,13 @@ namespace FamilyWebBlazorServer.Pages.Account;
 
 public class LogoutModel : PageModel
 {
-    public async Task<IActionResult> OnGetAsync()
+    public IActionResult OnGet()
+    {
+        // Render a confirmation form. Logout is performed via POST to prevent CSRF.
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return LocalRedirect("/account/login");

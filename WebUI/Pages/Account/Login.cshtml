@@ -17,7 +17,7 @@
         {
             <div class="alert alert-danger">@Model.ErrorMessage</div>
         }
-        <form method="post">
+        <form method="post" asp-antiforgery="true">
             <div class="mb-3">
                 <label for="email" class="form-label">E-postadress</label>
                 <input type="email" class="form-control" id="email" name="Email" required autofocus />
