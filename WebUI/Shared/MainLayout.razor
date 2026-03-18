@@ -11,12 +11,18 @@
                     <a class="left-nav-link" href="/persons">Lista alla personer</a>
                 </li>
             </ul>
+
+            <div class="left-nav-group-title mt-3">Släktträd</div>
+            <ul class="left-nav-submenu list-unstyled">
+                <li>
+                    <a class="left-nav-link" href="/tree">Visa släktträd</a>
+                </li>
+            </ul>
         </nav>
     </aside>
 
     <main class="main-area">
         <div class="top-row bg-dark text-white p-2 d-flex justify-content-between align-items-center">
-            <a class="navbar-brand text-white" href="/tree">Träd</a>
             <AuthorizeView>
                 <Authorized>
                     <span class="text-white me-2">@context.User.Identity?.Name</span>
