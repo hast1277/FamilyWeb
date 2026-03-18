@@ -1,18 +1,32 @@
 @inherits LayoutComponentBase
 
 <div class="page">
-    <div class="top-row bg-dark text-white p-2 d-flex justify-content-between align-items-center">
-        <a class="navbar-brand text-white" href="/">Gullberg Family</a>
-        <a class="navbar-brand text-white" href="/persons">Personer</a>
-        <a class="navbar-brand text-white" href="/tree">Träd</a>
-        <AuthorizeView>
-            <Authorized>
-                <span class="text-white me-2">@context.User.Identity?.Name</span>
-                <a class="btn btn-sm btn-outline-light" href="/account/logout">Logga ut</a>
-            </Authorized>
-        </AuthorizeView>
-    </div>
-    <div class="content px-4">
-        @Body
-    </div>
+    <aside class="left-nav bg-dark text-white">
+        <a class="left-nav-brand" href="/">Gullberg Family</a>
+
+        <nav class="left-nav-menu" aria-label="Huvudmeny">
+            <div class="left-nav-group-title">Personer</div>
+            <ul class="left-nav-submenu list-unstyled">
+                <li>
+                    <a class="left-nav-link" href="/persons">Lista alla personer</a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="main-area">
+        <div class="top-row bg-dark text-white p-2 d-flex justify-content-between align-items-center">
+            <a class="navbar-brand text-white" href="/tree">Träd</a>
+            <AuthorizeView>
+                <Authorized>
+                    <span class="text-white me-2">@context.User.Identity?.Name</span>
+                    <a class="btn btn-sm btn-outline-light" href="/account/logout">Logga ut</a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        <div class="content px-4">
+            @Body
+        </div>
+    </main>
 </div>

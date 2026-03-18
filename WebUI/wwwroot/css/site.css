@@ -2,6 +2,52 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
 .content { padding-top: 1rem; }
 .top-row { height: 3.5rem; }
 
+.page {
+    display: flex;
+    min-height: 100vh;
+}
+
+.left-nav {
+    width: 280px;
+    flex: 0 0 280px;
+    padding: 1rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.left-nav-brand {
+    display: block;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+}
+
+.left-nav-group-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.left-nav-submenu {
+    margin: 0;
+    padding-left: 1rem;
+}
+
+.left-nav-link {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+}
+
+.left-nav-link:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.main-area {
+    flex: 1;
+    min-width: 0;
+}
+
 /*.person-details-header {
     display: flex;
     align-items: flex-start;
@@ -158,4 +204,17 @@ body { font-family: "Segoe UI", Arial, sans-serif; }
     background: #0d6efd;
     border: 2px solid #fff;
     box-shadow: 0 0 0 1px #0d6efd;
+}
+
+@media (max-width: 992px) {
+    .page {
+        flex-direction: column;
+    }
+
+    .left-nav {
+        width: 100%;
+        flex: 0 0 auto;
+        border-right: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
 }
