@@ -138,17 +138,33 @@ window.familyTree = (() => {
         if (!cy) return;
 
         const { jsPDF } = window.jspdf;
-        const scale = 2;
-        const padding = 40;
+        const margin = 10; // mm
         const bb = cy.elements().boundingBox();
-        const imgW = Math.ceil((bb.w + padding * 2) * scale);
-        const imgH = Math.ceil((bb.h + padding * 2) * scale);
 
-        const png64 = cy.png({ output: 'base64', full: true, scale, bg: '#ffffff' });
+        // Pick A4 orientation that best fits the tree's aspect ratio
+        const availPortrait  = { w: 210 - margin * 2, h: 297 - margin * 2 };
+        const availLandscape = { w: 297 - margin * 2, h: 210 - margin * 2 };
+        const scalePortrait  = Math.min(availPortrait.w  / bb.w, availPortrait.h  / bb.h);
+        const scaleLandscape = Math.min(availLandscape.w / bb.w, availLandscape.h / bb.h);
+        const useLandscape   = scaleLandscape > scalePortrait;
+        const avail          = useLandscape ? availLandscape : availPortrait;
 
-        const orientation = imgW >= imgH ? 'landscape' : 'portrait';
-        const pdf = new jsPDF({ orientation, unit: 'px', format: [imgW, imgH], compress: true });
-        pdf.addImage('data:image/png;base64,' + png64, 'PNG', 0, 0, imgW, imgH);
+        // Scale image to fill available area, preserving aspect ratio
+        const fit  = Math.min(avail.w / bb.w, avail.h / bb.h);
+        const imgW = bb.w * fit;
+        const imgH = bb.h * fit;
+        const x    = margin + (avail.w - imgW) / 2;
+        const y    = margin + (avail.h - imgH) / 2;
+
+        const png64 = cy.png({ output: 'base64', full: true, scale: 3, bg: '#ffffff' });
+
+        const pdf = new jsPDF({
+            orientation: useLandscape ? 'landscape' : 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true
+        });
+        pdf.addImage('data:image/png;base64,' + png64, 'PNG', x, y, imgW, imgH);
         pdf.save('familjtrad.pdf');
     }
 
