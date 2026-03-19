@@ -1,21 +1,17 @@
 @page "/tree"
 @page "/tree/{RootId:long}"
 
-@using Blazor.Diagrams
-@using Blazor.Diagrams.Components
-@using Blazor.Diagrams.Components.Widgets
-@using Blazor.Diagrams.Core.Geometry
-@using Blazor.Diagrams.Core.Models
 @using DataSetService
 @using DataSetService.FamilyTree
 @using DataSetService.Models
-@using FamilyWebBlazorServer.Diagramming.FamilyTree
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Caching.Memory
+@implements IAsyncDisposable
 @inject NavigationManager Navigation
 @inject PersonService PersonService
 @inject FamilyTreeService FamilyTreeService
 @inject IMemoryCache Cache
+@inject IJSRuntime JS
 
 <h3>Familjeträd</h3>
 
@@ -33,6 +29,9 @@
         </InputSelect>
     </div>
     <button class="btn btn-primary" @onclick="ShowTree">Visa</button>
+    <button class="btn btn-outline-secondary" @onclick="ExportPdf" disabled="@(lastBuiltRootId is null)">
+        ⬇ Spara som PDF
+    </button>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(error))
@@ -40,42 +39,21 @@
     <div class="alert alert-danger">@error</div>
 }
 
-<div class="family-tree-container">
-    <CascadingValue Value="diagram">
-        <DiagramCanvas>
-            <Widgets>
-                <NavigatorWidget Width="220"
-                                 Height="160"
-                                 Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid #00000033; background: #ffffffcc;" />
-                <SelectionBoxWidget />
-            </Widgets>
-        </DiagramCanvas>
-    </CascadingValue>
-</div>
+<div id="cy-container" class="family-tree-container"></div>
 
 @code {
     [Parameter] public long RootId { get; set; }
 
-    private BlazorDiagram diagram = default!;
     private List<Person>? persons;
     private long selectedRootId;
     private string? error;
     private long? lastBuiltRootId;
 
+    private DotNetObjectReference<FamilyTree>? dotNetRef;
+
     protected override void OnInitialized()
     {
-        diagram = new BlazorDiagram();
-        diagram.RegisterComponent<PersonNodeModel, PersonNodeWidget>();
-        diagram.RegisterComponent<UnionNodeModel, UnionNodeWidget>();
-    }
-
-    protected override void OnParametersSet()
-    {
-        if (RootId > 0)
-            selectedRootId = RootId;
-
-        if (selectedRootId > 0)
-            BuildDiagram(selectedRootId);
+        dotNetRef = DotNetObjectReference.Create(this);
     }
 
     protected override Task OnInitializedAsync()
@@ -86,10 +64,19 @@
         if (selectedRootId <= 0)
             selectedRootId = RootId > 0 ? RootId : (persons.FirstOrDefault()?.Id ?? 0);
 
-        if (selectedRootId > 0)
-            BuildDiagram(selectedRootId);
-
         return Task.CompletedTask;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (RootId > 0)
+            selectedRootId = RootId;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (selectedRootId > 0 && lastBuiltRootId != selectedRootId)
+            await BuildDiagramAsync(selectedRootId);
     }
 
     private void ShowTree()
@@ -100,19 +87,14 @@
         Navigation.NavigateTo($"/tree/{selectedRootId}");
     }
 
-    private void BuildDiagram(long rootId)
+    private async Task BuildDiagramAsync(long rootId)
     {
-        if (lastBuiltRootId == rootId && string.IsNullOrWhiteSpace(error) && diagram.Nodes.Count > 0)
-            return;
-
         error = null;
-        diagram.Nodes.Clear();
-        diagram.Links.Clear();
 
         var buildOptions = new FamilyTreeBuildOptions
         {
             MaxDepth = 6,
-            MaxNodes = 400,
+            MaxNodes = 150,
             OnlyExpandChildrenWithFamilies = true
         };
 
@@ -139,49 +121,41 @@
         catch (Exception ex)
         {
             error = ex.Message;
+            StateHasChanged();
             return;
         }
 
-        var nodeById = new Dictionary<string, NodeModel>(StringComparer.Ordinal);
-
-        foreach (var n in tree.Nodes)
+        try
         {
-            var x = n.X ?? 0;
-            var y = n.Y ?? 0;
-
-            NodeModel model;
-            if (string.Equals(n.Type, "person", StringComparison.OrdinalIgnoreCase) && n.PersonId is long pid)
-            {
-                model = new PersonNodeModel(
-                    id: n.Id,
-                    position: new Point(x, y),
-                    personId: pid,
-                    label: n.Label ?? $"Person {pid}",
-                    photo: n.Photo);
-            }
-            else
-            {
-                model = new UnionNodeModel(n.Id, new Point(x, y));
-            }
-
-            nodeById[n.Id] = model;
-            diagram.Nodes.Add(model);
+            await JS.InvokeVoidAsync("familyTree.init", dotNetRef, "cy-container", tree.Nodes, tree.Edges);
+            lastBuiltRootId = rootId;
         }
-
-        foreach (var e in tree.Edges)
+        catch (Exception ex)
         {
-            if (!nodeById.TryGetValue(e.FromId, out var from) || !nodeById.TryGetValue(e.ToId, out var to))
-                continue;
-
-            var link = new LinkModel(from, to);
-            if (string.Equals(e.Type, "child", StringComparison.OrdinalIgnoreCase))
-            {
-                link.TargetMarker = LinkMarker.Arrow;
-            }
-
-            diagram.Links.Add(link);
+            error = ex.Message;
+            StateHasChanged();
         }
+    }
 
-        lastBuiltRootId = rootId;
+    [JSInvokable]
+    public void OnPersonClicked(long personId)
+    {
+        Navigation.NavigateTo($"/persons/{personId}");
+    }
+
+    private async Task ExportPdf()
+    {
+        await JS.InvokeVoidAsync("familyTree.exportToPdf");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("familyTree.destroy");
+        }
+        catch { /* JS runtime may already be disposed on circuit teardown */ }
+
+        dotNetRef?.Dispose();
     }
 }
