@@ -16,10 +16,10 @@ builder.Services.AddRazorPages(options =>
 builder.Services.AddServerSideBlazor();
 builder.Services.AddMemoryCache();
 
-var dbPath = builder.Configuration["DbPath"] ?? "/home/stefan-hall/gullberg.sqlite";
+var dbPath = builder.Configuration["DbPath"] ?? "/var/lib/FamilyWeb/FamilyDB.sqlite";
 builder.Services.AddSingleton(new UserService(dbPath));
 
-var familyDbPath = builder.Configuration["FamilyDbPath"] ?? "/var/lib/FamilyWeb/gullberg.sqlite";
+var familyDbPath = builder.Configuration["FamilyDbPath"] ?? "/var/lib/FamilyWeb/FamilyDB.sqlite";
 builder.Services.AddSingleton(new PersonService(familyDbPath));
 builder.Services.AddSingleton(new FamilyTreeService(familyDbPath));
 

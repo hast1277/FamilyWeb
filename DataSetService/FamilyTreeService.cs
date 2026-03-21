@@ -7,7 +7,7 @@ public sealed class FamilyTreeService
 {
     private readonly string _dbPath;
 
-    public FamilyTreeService(string dbPath = "/var/lib/FamilyWeb/gullberg.sqlite")
+    public FamilyTreeService(string dbPath = "/var/lib/FamilyWeb/FamilyDB.sqlite")
     {
         _dbPath = dbPath;
     }

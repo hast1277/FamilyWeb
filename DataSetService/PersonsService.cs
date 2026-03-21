@@ -7,7 +7,7 @@ public class PersonService
 {
     private readonly string _dbPath;
 
-    public PersonService(string dbPath = "/var/lib/FamilyWeb/gullberg.sqlite")
+    public PersonService(string dbPath = "/var/lib/FamilyWeb/FamilyDB.sqlite")
     {
         _dbPath = dbPath;
     }
