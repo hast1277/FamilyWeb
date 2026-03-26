@@ -29,6 +29,12 @@
         </InputSelect>
     </div>
     <button class="btn btn-primary" @onclick="ShowTree">Visa</button>
+    <div style="min-width: 220px;">
+        <label class="form-label">Textstorlek (PDF): <strong>@(Math.Round(pdfScaleFactor * 100))%</strong></label>
+        <input type="range" class="form-range" min="0.5" max="2" step="0.1" 
+               value="@pdfScaleFactor.ToString("F1")" 
+               @oninput="OnScaleFactorChanged" />
+    </div>
     <button class="btn btn-outline-secondary" @onclick="ExportPdf" disabled="@(lastBuiltRootId is null)">
         ⬇ Spara som PDF
     </button>
@@ -48,6 +54,7 @@
     private long selectedRootId;
     private string? error;
     private long? lastBuiltRootId;
+    private double pdfScaleFactor = 1.0;
 
     private DotNetObjectReference<FamilyTree>? dotNetRef;
 
@@ -145,7 +152,15 @@
 
     private async Task ExportPdf()
     {
-        await JS.InvokeVoidAsync("familyTree.exportToPdf");
+        await JS.InvokeVoidAsync("familyTree.exportToPdf", pdfScaleFactor);
+    }
+
+    private void OnScaleFactorChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double newValue))
+        {
+            pdfScaleFactor = newValue;
+        }
     }
 
     public async ValueTask DisposeAsync()

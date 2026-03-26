@@ -29,8 +29,12 @@ public class PersonService
     private static long? ToLongNullable(SqliteDataReader dr, int i)
     {
         if (dr.IsDBNull(i)) return null;
-        var val = dr.GetValue(i)?.ToString();
-        return string.IsNullOrEmpty(val) ? null : Convert.ToInt64(val);
+        var val = dr.GetValue(i)?.ToString()?.Trim();
+        if (string.IsNullOrEmpty(val)) return null;
+        if (long.TryParse(val, out var result)) return result;
+        // Handle multi-family values like "50- 49" or "61- 61" — take the first number
+        var first = val.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries)[0];
+        return long.TryParse(first, out var firstResult) ? firstResult : null;
     }
 
     private static Person MapPerson(SqliteDataReader dr) => new Person

@@ -134,38 +134,95 @@ window.familyTree = (() => {
         cy.fit(cy.elements(), 40);
     }
 
-    function exportToPdf() {
+    function exportToPdf(scaleFactor = 1.0) {
         if (!cy) return;
 
         const { jsPDF } = window.jspdf;
         const margin = 10; // mm
+        const a4Width = 210; // mm
+        const a4Height = 297; // mm
+        const contentWidth = a4Width - margin * 2;
+        const contentHeight = a4Height - margin * 2;
+
+        // Get the bounding box of the tree
         const bb = cy.elements().boundingBox();
 
-        // Pick A4 orientation that best fits the tree's aspect ratio
-        const availPortrait  = { w: 210 - margin * 2, h: 297 - margin * 2 };
-        const availLandscape = { w: 297 - margin * 2, h: 210 - margin * 2 };
-        const scalePortrait  = Math.min(availPortrait.w  / bb.w, availPortrait.h  / bb.h);
-        const scaleLandscape = Math.min(availLandscape.w / bb.w, availLandscape.h / bb.h);
-        const useLandscape   = scaleLandscape > scalePortrait;
-        const avail          = useLandscape ? availLandscape : availPortrait;
+        // Render the tree as PNG with higher resolution for better quality when scaled
+        const renderScale = 3 * scaleFactor;
+        const png64 = cy.png({ output: 'base64', full: true, scale: renderScale, bg: '#ffffff' });
 
-        // Scale image to fill available area, preserving aspect ratio
-        const fit  = Math.min(avail.w / bb.w, avail.h / bb.h);
-        const imgW = bb.w * fit;
-        const imgH = bb.h * fit;
-        const x    = margin + (avail.w - imgW) / 2;
-        const y    = margin + (avail.h - imgH) / 2;
+        // Calculate image dimensions in mm
+        const imgWidth = bb.w * scaleFactor;
+        const imgHeight = bb.h * scaleFactor;
 
-        const png64 = cy.png({ output: 'base64', full: true, scale: 3, bg: '#ffffff' });
+        // Determine if we need multiple pages
+        const fit = Math.min(contentWidth / imgWidth, contentHeight / imgHeight);
+        const needsMultiplePages = fit < 1;
 
-        const pdf = new jsPDF({
-            orientation: useLandscape ? 'landscape' : 'portrait',
-            unit: 'mm',
-            format: 'a4',
-            compress: true
-        });
-        pdf.addImage('data:image/png;base64,' + png64, 'PNG', x, y, imgW, imgH);
-        pdf.save('familjtrad.pdf');
+        // Create image element to get dimensions for cropping
+        const img = new Image();
+        img.onload = function() {
+            const pixelWidth = img.width;
+            const pixelHeight = img.height;
+
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+                compress: true
+            });
+
+            if (!needsMultiplePages) {
+                // Single page: center the image
+                const x = margin + (contentWidth - imgWidth) / 2;
+                const y = margin + (contentHeight - imgHeight) / 2;
+                pdf.addImage('data:image/png;base64,' + png64, 'PNG', x, y, imgWidth, imgHeight);
+                pdf.save('familjtrad.pdf');
+            } else {
+                // Multiple pages: create crops and add to PDF
+                const pixelsPerMm = Math.max(pixelWidth / imgWidth, pixelHeight / imgHeight);
+                const contentPixelWidth = contentWidth * pixelsPerMm;
+                const contentPixelHeight = contentHeight * pixelsPerMm;
+
+                const cols = Math.ceil(pixelWidth / contentPixelWidth);
+                const rows = Math.ceil(pixelHeight / contentPixelHeight);
+
+                let pageCount = 0;
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        if (pageCount > 0) {
+                            pdf.addPage('a4', 'portrait');
+                        }
+
+                        // Create canvas for this page's content
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.min(contentPixelWidth, pixelWidth - col * contentPixelWidth);
+                        canvas.height = Math.min(contentPixelHeight, pixelHeight - row * contentPixelHeight);
+                        const ctx = canvas.getContext('2d');
+
+                        // Draw the relevant portion of the image
+                        ctx.drawImage(
+                            img,
+                            col * contentPixelWidth, row * contentPixelHeight,
+                            canvas.width, canvas.height,
+                            0, 0,
+                            canvas.width, canvas.height
+                        );
+
+                        // Add canvas image to PDF
+                        const canvasDataUrl = canvas.toDataURL('image/png');
+                        const displayWidth = canvas.width / pixelsPerMm;
+                        const displayHeight = canvas.height / pixelsPerMm;
+                        pdf.addImage(canvasDataUrl, 'PNG', margin, margin, displayWidth, displayHeight);
+
+                        pageCount++;
+                    }
+                }
+
+                pdf.save('familjtrad.pdf');
+            }
+        };
+        img.src = 'data:image/png;base64,' + png64;
     }
 
     function destroy() {
