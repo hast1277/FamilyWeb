@@ -1,5 +1,7 @@
 namespace DataSetService.FamilyTree;
 
+using System.Text.Json.Serialization;
+
 public sealed record FamilyTreeBuildOptions
 {
     public int MaxDepth { get; init; } = 6;
@@ -36,6 +38,7 @@ public sealed record TreeNodeDto
     public required string Id { get; init; }
     public required string Type { get; init; } // "person" | "union"
 
+    [JsonPropertyName("personId")]
     public long? PersonId { get; init; }
     public string? Label { get; init; }
     public string? Photo { get; init; }

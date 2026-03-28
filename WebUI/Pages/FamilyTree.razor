@@ -6,6 +6,7 @@
 @using DataSetService.Models
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Caching.Memory
+@using System.Globalization
 @implements IAsyncDisposable
 @inject NavigationManager Navigation
 @inject PersonService PersonService
@@ -32,8 +33,18 @@
     <div style="min-width: 220px;">
         <label class="form-label">Textstorlek (PDF): <strong>@(Math.Round(pdfScaleFactor * 100))%</strong></label>
         <input type="range" class="form-range" min="0.5" max="2" step="0.1" 
-               value="@pdfScaleFactor.ToString("F1")" 
+               value="@pdfScaleFactor.ToString("F1", CultureInfo.InvariantCulture)" 
                @oninput="OnScaleFactorChanged" />
+    </div>
+    <div style="min-width: 220px;">
+        <label class="form-label">Sidorientering (PDF)</label>
+        <select class="form-select" value="@pdfOrientation" @onchange="OnOrientationChanged">
+            <option value="landscape">Liggande</option>
+            <option value="portrait">Stående</option>
+        </select>
+    </div>
+    <div class="text-muted" style="min-width: 220px;">
+        A4-sidor: <strong>@(estimatedPageCount?.ToString() ?? "-")</strong>
     </div>
     <button class="btn btn-outline-secondary" @onclick="ExportPdf" disabled="@(lastBuiltRootId is null)">
         ⬇ Spara som PDF
@@ -55,6 +66,8 @@
     private string? error;
     private long? lastBuiltRootId;
     private double pdfScaleFactor = 1.0;
+    private string pdfOrientation = "landscape";
+    private int? estimatedPageCount;
 
     private DotNetObjectReference<FamilyTree>? dotNetRef;
 
@@ -136,6 +149,7 @@
         {
             await JS.InvokeVoidAsync("familyTree.init", dotNetRef, "cy-container", tree.Nodes, tree.Edges);
             lastBuiltRootId = rootId;
+            await UpdatePageEstimateAsync();
         }
         catch (Exception ex)
         {
@@ -152,15 +166,36 @@
 
     private async Task ExportPdf()
     {
-        await JS.InvokeVoidAsync("familyTree.exportToPdf", pdfScaleFactor);
+        await JS.InvokeVoidAsync("familyTree.exportToPdf", pdfScaleFactor, pdfOrientation);
     }
 
-    private void OnScaleFactorChanged(ChangeEventArgs e)
+    private async Task OnScaleFactorChanged(ChangeEventArgs e)
     {
-        if (double.TryParse(e.Value?.ToString(), out double newValue))
+        var value = e.Value?.ToString();
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var newValue) ||
+            double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out newValue))
         {
             pdfScaleFactor = newValue;
+            await UpdatePageEstimateAsync();
         }
+    }
+
+    private async Task OnOrientationChanged(ChangeEventArgs e)
+    {
+        pdfOrientation = e.Value?.ToString() == "portrait" ? "portrait" : "landscape";
+        await UpdatePageEstimateAsync();
+    }
+
+    private async Task UpdatePageEstimateAsync()
+    {
+        if (lastBuiltRootId is null)
+        {
+            estimatedPageCount = null;
+            return;
+        }
+
+        estimatedPageCount = await JS.InvokeAsync<int>("familyTree.getEstimatedPageCount", pdfScaleFactor, pdfOrientation);
+        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()

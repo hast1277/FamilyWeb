@@ -89,7 +89,7 @@ public class PersonService
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM \"dbo.Families\" WHERE ID = @familyId";
+        cmd.CommandText = "SELECT * FROM \"Families\" WHERE ID = @familyId";
         cmd.Parameters.AddWithValue("@familyId", familyId.ToString());
         using var dr = cmd.ExecuteReader();
         var result = new List<FamilyRelation>();
@@ -110,7 +110,7 @@ public class PersonService
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM \"dbo.Baptisms\" WHERE IndividualID = @personId";
+        cmd.CommandText = "SELECT * FROM \"Baptisms\" WHERE IndividualID = @personId";
         cmd.Parameters.AddWithValue("@personId", personId.ToString());
         using var dr = cmd.ExecuteReader();
         if (!dr.Read()) return null;

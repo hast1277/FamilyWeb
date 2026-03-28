@@ -4,6 +4,32 @@ window.familyTree = (() => {
     let cy = null;
     let dotNetRef = null;
 
+    function getPageGrid(scaleFactor = 1.0, orientation = 'landscape') {
+        if (!cy) {
+            return { rows: 0, cols: 0, pages: 0 };
+        }
+
+        const margin = 10; // mm
+        const isPortrait = orientation === 'portrait';
+        const a4Width = isPortrait ? 210 : 297;
+        const a4Height = isPortrait ? 297 : 210;
+        const contentWidth = a4Width - margin * 2;
+        const contentHeight = a4Height - margin * 2;
+
+        const bb = cy.elements().boundingBox();
+        const imgWidth = Math.max(1, bb.w * scaleFactor);
+        const imgHeight = Math.max(1, bb.h * scaleFactor);
+
+        const fit = Math.min(contentWidth / imgWidth, contentHeight / imgHeight);
+        if (fit >= 1) {
+            return { rows: 1, cols: 1, pages: 1 };
+        }
+
+        const cols = Math.ceil(imgWidth / contentWidth);
+        const rows = Math.ceil(imgHeight / contentHeight);
+        return { rows, cols, pages: rows * cols };
+    }
+
     function init(dotNetReference, containerId, nodes, edges) {
         dotNetRef = dotNetReference;
 
@@ -134,13 +160,14 @@ window.familyTree = (() => {
         cy.fit(cy.elements(), 40);
     }
 
-    function exportToPdf(scaleFactor = 1.0) {
+    function exportToPdf(scaleFactor = 1.0, orientation = 'landscape') {
         if (!cy) return;
 
         const { jsPDF } = window.jspdf;
         const margin = 10; // mm
-        const a4Width = 210; // mm
-        const a4Height = 297; // mm
+        const isPortrait = orientation === 'portrait';
+        const a4Width = isPortrait ? 210 : 297;
+        const a4Height = isPortrait ? 297 : 210;
         const contentWidth = a4Width - margin * 2;
         const contentHeight = a4Height - margin * 2;
 
@@ -166,7 +193,7 @@ window.familyTree = (() => {
             const pixelHeight = img.height;
 
             const pdf = new jsPDF({
-                orientation: 'portrait',
+                orientation,
                 unit: 'mm',
                 format: 'a4',
                 compress: true
@@ -191,7 +218,7 @@ window.familyTree = (() => {
                 for (let row = 0; row < rows; row++) {
                     for (let col = 0; col < cols; col++) {
                         if (pageCount > 0) {
-                            pdf.addPage('a4', 'portrait');
+                            pdf.addPage('a4', orientation);
                         }
 
                         // Create canvas for this page's content
@@ -225,6 +252,11 @@ window.familyTree = (() => {
         img.src = 'data:image/png;base64,' + png64;
     }
 
+    function getEstimatedPageCount(scaleFactor = 1.0, orientation = 'landscape') {
+        const { pages } = getPageGrid(scaleFactor, orientation);
+        return pages;
+    }
+
     function destroy() {
         if (cy) {
             cy.destroy();
@@ -233,5 +265,5 @@ window.familyTree = (() => {
         dotNetRef = null;
     }
 
-    return { init, exportToPdf, destroy };
+    return { init, exportToPdf, getEstimatedPageCount, destroy };
 })();
