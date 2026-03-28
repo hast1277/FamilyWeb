@@ -74,6 +74,24 @@ public class PersonService
         return dr.Read() ? MapPerson(dr) : null;
     }
 
+    public List<Person> GetParents(long personId)
+    {
+        var person = GetPerson(personId);
+        if (person?.IsChildInFamily is null)
+            return new List<Person>();
+
+        return GetFamilyRelations(person.IsChildInFamily.Value)
+            .Where(relation => relation.IndividualType == "PAR")
+            .Select(relation => GetPerson(relation.IndividualID))
+            .Where(parent => parent != null)
+            .Select(parent => parent!)
+            .DistinctBy(parent => parent.Id)
+            .OrderBy(parent => GetParentSortKey(parent.Sex))
+            .ThenBy(parent => parent.SurName)
+            .ThenBy(parent => parent.FirstName)
+            .ToList();
+    }
+
     public void UpdatePersonPhoto(long id, string photoFileName)
     {
         using var conn = OpenConnection();
@@ -83,6 +101,13 @@ public class PersonService
         cmd.Parameters.AddWithValue("@id", id.ToString());
         cmd.ExecuteNonQuery();
     }
+
+    private static int GetParentSortKey(string? sex) => sex switch
+    {
+        "F" => 0,
+        "M" => 1,
+        _ => 2,
+    };
 
     // Returns all family members belonging to the given family ID.
     public List<FamilyRelation> GetFamilyRelations(long familyId)

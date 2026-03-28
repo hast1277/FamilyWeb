@@ -1,3 +1,4 @@
+@page "/persondetails/{Id:long}"
 @inherits ComponentBase
 @using Microsoft.AspNetCore.Components.Forms
 
@@ -53,6 +54,32 @@ else
 			<tr>
 				<td><strong>Född</strong></td>
 				<td>@person.Birthday</td>
+			</tr>
+			<tr>
+				<td><strong>@firstParentRow.Label</strong></td>
+				<td>
+					@if (firstParentRow.Parent != null)
+					{
+						<a href="/persondetails/@firstParentRow.Parent.Id">@GetPersonDisplayName(firstParentRow.Parent)</a>
+					}
+					else
+					{
+						@GetPersonDisplayName(firstParentRow.Parent)
+					}
+				</td>
+			</tr>
+			<tr>
+				<td><strong>@secondParentRow.Label</strong></td>
+				<td>
+					@if (secondParentRow.Parent != null)
+					{
+						<a href="/persondetails/@secondParentRow.Parent.Id">@GetPersonDisplayName(secondParentRow.Parent)</a>
+					}
+					else
+					{
+						@GetPersonDisplayName(secondParentRow.Parent)
+					}
+				</td>
 			</tr>
 			@if (baptism != null)
 			{

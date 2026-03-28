@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Hosting;
@@ -10,6 +11,8 @@ namespace FamilyWebBlazorServer.Pages
 {
 	public partial class PersonDetails : ComponentBase
 	{
+		private sealed record ParentDisplayRow(string Label, Person? Parent);
+
 		private const string PhotoBasePath = "/img/Family/";
 		private const string PlaceholderPhotoFileName = "EmptyPhoto.png";
 		private const string PlaceholderPhotoPath = $"{PhotoBasePath}{PlaceholderPhotoFileName}";
@@ -30,6 +33,8 @@ namespace FamilyWebBlazorServer.Pages
 
 		private Person? person;
 		private Baptism? baptism;
+		private ParentDisplayRow firstParentRow = new("Förälder 1", null);
+		private ParentDisplayRow secondParentRow = new("Förälder 2", null);
 		private bool loaded;
 		private bool isUploading;
 		private string? photoUploadMessage;
@@ -40,8 +45,42 @@ namespace FamilyWebBlazorServer.Pages
 			loaded = false;
 			person = PersonService.GetPerson(Id);
 			baptism = PersonService.GetBaptism(Id);
+			SetParentRows();
 			loaded = true;
 			photoUploadMessage = null;
+		}
+
+		private void SetParentRows()
+		{
+			var parents = PersonService.GetParents(Id);
+			var mother = parents.FirstOrDefault(parent => string.Equals(parent.Sex, "F", StringComparison.OrdinalIgnoreCase));
+			var father = parents.FirstOrDefault(parent => string.Equals(parent.Sex, "M", StringComparison.OrdinalIgnoreCase));
+
+			if (mother != null || father != null)
+			{
+				firstParentRow = new ParentDisplayRow("Mor", mother);
+				secondParentRow = new ParentDisplayRow("Far", father ?? parents.FirstOrDefault(parent => parent.Id != mother?.Id));
+				if (firstParentRow.Parent == null)
+				{
+					firstParentRow = new ParentDisplayRow("Förälder 1", parents.ElementAtOrDefault(0));
+					secondParentRow = new ParentDisplayRow("Förälder 2", parents.ElementAtOrDefault(1));
+				}
+				return;
+			}
+
+			firstParentRow = new ParentDisplayRow("Förälder 1", parents.ElementAtOrDefault(0));
+			secondParentRow = new ParentDisplayRow("Förälder 2", parents.ElementAtOrDefault(1));
+		}
+
+		private static string GetPersonDisplayName(Person? parent)
+		{
+			if (parent == null)
+				return "Saknas";
+
+			var fullName = string.Join(" ", new[] { parent.SurName, parent.FirstName }
+				.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+			return string.IsNullOrWhiteSpace(fullName) ? $"Person {parent.Id}" : fullName;
 		}
 
 		private async Task OnPhotoSelectedAsync(InputFileChangeEventArgs e)

@@ -46,7 +46,7 @@ public sealed class FamilyTreeService
         personCmd.Parameters.Add(personIdParam);
 
         using var famCmd = conn.CreateCommand();
-        famCmd.CommandText = "SELECT IndividualType, IndividualID, FamilyAncestor FROM \"dbo.Families\" WHERE ID = @familyId";
+        famCmd.CommandText = "SELECT IndividualType, IndividualID, FamilyAncestor FROM \"Families\" WHERE ID = @familyId";
         var famIdParam = famCmd.CreateParameter();
         famIdParam.ParameterName = "@familyId";
         famCmd.Parameters.Add(famIdParam);
@@ -116,6 +116,9 @@ public sealed class FamilyTreeService
                     if (!string.IsNullOrWhiteSpace(ancStr)) ancestor = Convert.ToInt64(ancStr, CultureInfo.InvariantCulture);
                 }
 
+                if (LoadPerson(individualId) is null)
+                    continue;
+
                 if (type == "PAR")
                 {
                     parents.Add(individualId);
@@ -162,6 +165,8 @@ public sealed class FamilyTreeService
             nodeBases[nid] = ("person", p.Id, label, p.Photo);
         }
 
+        bool HasPersonNode(long personId) => nodeBases.ContainsKey(PersonNodeId(personId));
+
         void EnsureUnionNode(long familyId)
         {
             var nid = UnionNodeId(familyId);
@@ -202,6 +207,9 @@ public sealed class FamilyTreeService
                 foreach (var parentId in fam.ParentIds)
                 {
                     EnsurePersonNode(parentId);
+                    if (!HasPersonNode(parentId))
+                        continue;
+
                     edges.Add((PersonNodeId(parentId), UnionNodeId(familyId), "spouse"));
                 }
 
@@ -209,6 +217,9 @@ public sealed class FamilyTreeService
                 foreach (var childId in fam.ChildIds)
                 {
                     EnsurePersonNode(childId);
+                    if (!HasPersonNode(childId))
+                        continue;
+
                     edges.Add((UnionNodeId(familyId), PersonNodeId(childId), "child"));
 
                     if (nodeBases.Count >= buildOptions.MaxNodes)
