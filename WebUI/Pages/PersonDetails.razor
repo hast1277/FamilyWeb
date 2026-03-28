@@ -60,7 +60,7 @@ else
 				<td>
 					@if (firstParentRow.Parent != null)
 					{
-						<a href="/persondetails/@firstParentRow.Parent.Id">@GetPersonDisplayName(firstParentRow.Parent)</a>
+						<a href="/persons/@firstParentRow.Parent.Id">@GetPersonDisplayName(firstParentRow.Parent)</a>
 					}
 					else
 					{
@@ -68,12 +68,19 @@ else
 					}
 				</td>
 			</tr>
+
+@*
+            <div class="person-card-details-link">
+                <a href="" @onclick="OpenPersonDetailsModal" @onclick:preventDefault="true">Visa persondetaljer</a>
+            </div>
+*@
+
 			<tr>
 				<td><strong>@secondParentRow.Label</strong></td>
 				<td>
 					@if (secondParentRow.Parent != null)
 					{
-						<a href="/persondetails/@secondParentRow.Parent.Id">@GetPersonDisplayName(secondParentRow.Parent)</a>
+						<a href="/persons/@secondParentRow.Parent.Id">@GetPersonDisplayName(secondParentRow.Parent)</a>
 					}
 					else
 					{

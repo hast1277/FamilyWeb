@@ -42,6 +42,8 @@ public sealed record TreeNodeDto
     public long? PersonId { get; init; }
     public string? Label { get; init; }
     public string? Photo { get; init; }
+    public string? Birthday { get; init; }
+    public string? DeathDate { get; init; }
 
     // Layout (optional, but filled by FamilyTreeService)
     public int? Depth { get; init; }

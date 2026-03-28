@@ -25,7 +25,9 @@ public sealed class FamilyTreeService
         string? SurName,
         string Photo,
         long? SpouseFamily1,
-        long? SpouseFamily2);
+        long? SpouseFamily2,
+        string? Birthday,
+        string? DeathDate);
 
     private sealed record FamilyMemberRow(string IndividualType, long IndividualId, long? FamilyAncestor);
 
@@ -40,7 +42,23 @@ public sealed class FamilyTreeService
 
         // --- Prepared commands ---
         using var personCmd = conn.CreateCommand();
-        personCmd.CommandText = "SELECT ID, SurName, FirstName, Photo, IsSpouseInFamily, IsSpouseInFamily2 FROM Persons WHERE ID = @id";
+        personCmd.CommandText = @"
+            SELECT p.ID,
+                   p.SurName,
+                   p.FirstName,
+                   p.Photo,
+                   p.IsSpouseInFamily,
+                   p.IsSpouseInFamily2,
+                   p.Birthday,
+                   (
+                       SELECT d.DeathDate
+                       FROM Deaths d
+                       WHERE d.IndividualID = p.ID
+                       ORDER BY d.ID
+                       LIMIT 1
+                   ) AS DeathDate
+            FROM Persons p
+            WHERE p.ID = @id";
         var personIdParam = personCmd.CreateParameter();
         personIdParam.ParameterName = "@id";
         personCmd.Parameters.Add(personIdParam);
@@ -84,7 +102,9 @@ public sealed class FamilyTreeService
                 FirstName: dr.IsDBNull(2) ? null : dr.GetString(2),
                 Photo: photo,
                 SpouseFamily1: ToLongNullable(4),
-                SpouseFamily2: ToLongNullable(5));
+                SpouseFamily2: ToLongNullable(5),
+                Birthday: dr.IsDBNull(6) ? null : dr.GetString(6),
+                DeathDate: dr.IsDBNull(7) ? null : dr.GetString(7));
 
             persons[id] = p;
             return p;
@@ -149,7 +169,7 @@ public sealed class FamilyTreeService
         static string PersonNodeId(long personId) => $"p:{personId}";
         static string UnionNodeId(long familyId) => $"u:{familyId}";
 
-        var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo)>();
+        var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo, string? Birthday, string? DeathDate)>();
         var edges = new HashSet<(string From, string To, string Type)>();
 
         void EnsurePersonNode(long personId)
@@ -162,7 +182,7 @@ public sealed class FamilyTreeService
             var label = ($"{p.FirstName} {p.SurName}").Trim();
             if (string.IsNullOrWhiteSpace(label)) label = $"Person {p.Id}";
 
-            nodeBases[nid] = ("person", p.Id, label, p.Photo);
+            nodeBases[nid] = ("person", p.Id, label, p.Photo, p.Birthday, p.DeathDate);
         }
 
         bool HasPersonNode(long personId) => nodeBases.ContainsKey(PersonNodeId(personId));
@@ -171,7 +191,7 @@ public sealed class FamilyTreeService
         {
             var nid = UnionNodeId(familyId);
             if (nodeBases.ContainsKey(nid)) return;
-            nodeBases[nid] = ("union", null, null, null);
+            nodeBases[nid] = ("union", null, null, null, null, null);
         }
 
         var visitedFamilies = new HashSet<long>();
@@ -254,7 +274,7 @@ public sealed class FamilyTreeService
 
         var nodes = nodeBases.Select(kvp =>
         {
-            var (type, pid, label, photo) = kvp.Value;
+            var (type, pid, label, photo, birthday, deathDate) = kvp.Value;
             var hasPos = positions.TryGetValue(kvp.Key, out var pos);
             return new TreeNodeDto
             {
@@ -263,6 +283,8 @@ public sealed class FamilyTreeService
                 PersonId = pid,
                 Label = label,
                 Photo = photo,
+                Birthday = birthday,
+                DeathDate = deathDate,
                 Depth = hasPos ? pos.Depth : null,
                 X = hasPos ? pos.X : null,
                 Y = hasPos ? pos.Y : null,

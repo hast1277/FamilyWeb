@@ -46,7 +46,11 @@ window.familyTree = (() => {
                 data: {
                     id: n.id,
                     nodeType: n.type,
-                    label: n.type === 'person' ? (n.label ?? '') : '',
+                    label: n.type === 'person'
+                        ? ((n.label ?? '')
+                            + (n.birthday ? '\n* ' + n.birthday : '')
+                            + (n.deathDate ? '\n† ' + n.deathDate : ''))
+                        : '',
                     personId: n.personId,
                     photo: n.photo ? `/img/Family/${n.photo}` : ''
                 },
@@ -72,7 +76,7 @@ window.familyTree = (() => {
                     style: {
                         'shape': 'round-rectangle',
                         'width': 180,
-                        'height': 70,
+                        'height': 98,
                         'background-color': '#ffffff',
                         'background-image': ele => ele.data('photo') || 'none',
                         'background-fit': 'none',

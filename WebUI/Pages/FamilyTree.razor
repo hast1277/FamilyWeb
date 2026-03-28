@@ -46,7 +46,7 @@
     <div class="text-muted" style="min-width: 220px;">
         A4-sidor: <strong>@(estimatedPageCount?.ToString() ?? "-")</strong>
     </div>
-    <button class="btn btn-outline-secondary" @onclick="ExportPdf" disabled="@(lastBuiltRootId is null)">
+    <button class="btn btn-primary" @onclick="ExportPdf" disabled="@(lastBuiltRootId is null)">
         ⬇ Spara som PDF
     </button>
 </div>
