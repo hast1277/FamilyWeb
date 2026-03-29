@@ -50,8 +50,15 @@ else
                     </tr>
                     <tr>
                         <td><strong>Född</strong></td>
-                        <td>@person.Birthday</td>
+                        <td>@(string.IsNullOrWhiteSpace(person.Birthday) ? null : $"* {person.Birthday}")</td>
                     </tr>
+                    @if (!string.IsNullOrWhiteSpace(person.DeathDate))
+                    {
+                        <tr>
+                            <td><strong>Död</strong></td>
+                            <td>@($"† {person.DeathDate}")</td>
+                        </tr>
+                    }
                     <tr>
                         @if (baptism != null)
                         {

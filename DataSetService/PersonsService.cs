@@ -37,30 +37,31 @@ public class PersonService
         return long.TryParse(first, out var firstResult) ? firstResult : null;
     }
 
-    private static Person MapPerson(SqliteDataReader dr) => new Person
+    private static Person ToPerson(PersonReadModel source) => new Person
     {
-        Id                = ToLong(dr, 0),
-        SurName           = dr.IsDBNull(1) ? null : dr.GetString(1),
-        FirstName         = dr.IsDBNull(2) ? null : dr.GetString(2),
-        Sex               = dr.IsDBNull(3) ? null : dr.GetString(3),
-        IsSpouseInFamily  = ToLongNullable(dr, 4),
-        IsChildInFamily   = ToLongNullable(dr, 5),
-        Notes             = dr.IsDBNull(6) ? null : dr.GetString(6),
-        Birthday          = dr.IsDBNull(7) ? null : dr.GetString(7),
-        Photo             = dr.IsDBNull(8) || string.IsNullOrEmpty(dr.GetString(8)) ? "EmptyPhoto.png" : dr.GetString(8),
-        FamilyTrees       = dr.IsDBNull(9) ? null : dr.GetString(9),
-        RootId            = ToLongNullable(dr, 10),
-        IsSpouseInFamily2 = ToLongNullable(dr, 11),
+        Id                = source.Id,
+        SurName           = source.SurName,
+        FirstName         = source.FirstName,
+        Sex               = source.Sex,
+        IsSpouseInFamily  = source.IsSpouseInFamily,
+        IsChildInFamily   = source.IsChildInFamily,
+        Notes             = source.Notes,
+        Birthday          = source.Birthday,
+        DeathDate         = source.DeathDate,
+        Photo             = source.Photo,
+        FamilyTrees       = source.FamilyTrees,
+        RootId            = source.RootId,
+        IsSpouseInFamily2 = source.IsSpouseInFamily2,
     };
 
     public List<Person> GetAllPersons()
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Persons ORDER BY SurName, FirstName";
+        cmd.CommandText = PersonReadDefinition.SelectColumnsWithDeathDate + " ORDER BY p.SurName, p.FirstName";
         using var dr = cmd.ExecuteReader();
         var result = new List<Person>();
-        while (dr.Read()) result.Add(MapPerson(dr));
+        while (dr.Read()) result.Add(ToPerson(PersonReadDefinition.Map(dr)));
         return result;
     }
 
@@ -68,10 +69,10 @@ public class PersonService
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Persons WHERE ID = @id";
+        cmd.CommandText = PersonReadDefinition.SelectByIdWithDeathDate;
         cmd.Parameters.AddWithValue("@id", id.ToString());
         using var dr = cmd.ExecuteReader();
-        return dr.Read() ? MapPerson(dr) : null;
+        return dr.Read() ? ToPerson(PersonReadDefinition.Map(dr)) : null;
     }
 
     public List<Person> GetParents(long personId)

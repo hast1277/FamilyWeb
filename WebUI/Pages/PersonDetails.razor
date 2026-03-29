@@ -69,12 +69,6 @@ else
 				</td>
 			</tr>
 
-@*
-            <div class="person-card-details-link">
-                <a href="" @onclick="OpenPersonDetailsModal" @onclick:preventDefault="true">Visa persondetaljer</a>
-            </div>
-*@
-
 			<tr>
 				<td><strong>@secondParentRow.Label</strong></td>
 				<td>
@@ -91,7 +85,7 @@ else
 			@if (baptism != null)
 			{
 				<tr>
-					<td><strong>Dopt</strong></td>
+					<td><strong>Döpt</strong></td>
 					<td>@baptism.BaptismDate</td>
 				</tr>
 				@if (!string.IsNullOrWhiteSpace(baptism.BaptismPlace))

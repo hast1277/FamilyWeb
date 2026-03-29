@@ -42,23 +42,7 @@ public sealed class FamilyTreeService
 
         // --- Prepared commands ---
         using var personCmd = conn.CreateCommand();
-        personCmd.CommandText = @"
-            SELECT p.ID,
-                   p.SurName,
-                   p.FirstName,
-                   p.Photo,
-                   p.IsSpouseInFamily,
-                   p.IsSpouseInFamily2,
-                   p.Birthday,
-                   (
-                       SELECT d.DeathDate
-                       FROM Deaths d
-                       WHERE d.IndividualID = p.ID
-                       ORDER BY d.ID
-                       LIMIT 1
-                   ) AS DeathDate
-            FROM Persons p
-            WHERE p.ID = @id";
+        personCmd.CommandText = PersonReadDefinition.SelectByIdWithDeathDate;
         var personIdParam = personCmd.CreateParameter();
         personIdParam.ParameterName = "@id";
         personCmd.Parameters.Add(personIdParam);
@@ -81,30 +65,16 @@ public sealed class FamilyTreeService
             using var dr = personCmd.ExecuteReader();
             if (!dr.Read()) return null;
 
-            long ToLong(int i)
-            {
-                if (dr.IsDBNull(i)) return 0;
-                var val = dr.GetValue(i)?.ToString();
-                return string.IsNullOrWhiteSpace(val) ? 0 : Convert.ToInt64(val, CultureInfo.InvariantCulture);
-            }
-
-            long? ToLongNullable(int i)
-            {
-                if (dr.IsDBNull(i)) return null;
-                var val = dr.GetValue(i)?.ToString();
-                return string.IsNullOrWhiteSpace(val) ? null : Convert.ToInt64(val, CultureInfo.InvariantCulture);
-            }
-
-            var photo = dr.IsDBNull(3) ? "EmptyPhoto.png" : (string.IsNullOrWhiteSpace(dr.GetString(3)) ? "EmptyPhoto.png" : dr.GetString(3));
+            var person = PersonReadDefinition.Map(dr);
             var p = new PersonLite(
-                Id: ToLong(0),
-                SurName: dr.IsDBNull(1) ? null : dr.GetString(1),
-                FirstName: dr.IsDBNull(2) ? null : dr.GetString(2),
-                Photo: photo,
-                SpouseFamily1: ToLongNullable(4),
-                SpouseFamily2: ToLongNullable(5),
-                Birthday: dr.IsDBNull(6) ? null : dr.GetString(6),
-                DeathDate: dr.IsDBNull(7) ? null : dr.GetString(7));
+                Id: person.Id,
+                SurName: person.SurName,
+                FirstName: person.FirstName,
+                Photo: person.Photo,
+                SpouseFamily1: person.IsSpouseInFamily,
+                SpouseFamily2: person.IsSpouseInFamily2,
+                Birthday: person.Birthday,
+                DeathDate: person.DeathDate);
 
             persons[id] = p;
             return p;

@@ -10,6 +10,7 @@ public class Person
     public long? IsChildInFamily { get; set; }
     public string? Notes { get; set; }
     public string? Birthday { get; set; }
+    public string? DeathDate { get; set; }
     public string? Photo { get; set; }
     public string? FamilyTrees { get; set; }
     public long? RootId { get; set; }
