@@ -3,6 +3,7 @@ window.familyTree = (() => {
 
     let cy = null;
     let dotNetRef = null;
+    const showUnionNodes = false;
 
     function getPersonNodeMetrics(ele) {
         const label = (ele.data('label') ?? '').toString();
@@ -220,11 +221,13 @@ window.familyTree = (() => {
                     selector: 'node[nodeType="union"]',
                     style: {
                         'shape': 'ellipse',
-                        'width': 14,
-                        'height': 14,
-                        'background-color': '#3b82f6',
-                        'border-width': 1.5,
-                        'border-color': '#1d4ed8',
+                        'width': showUnionNodes ? 14 : 1,
+                        'height': showUnionNodes ? 14 : 1,
+                        'background-color': showUnionNodes ? '#3b82f6' : 'transparent',
+                        'border-width': showUnionNodes ? 1.5 : 0,
+                        'border-color': showUnionNodes ? '#1d4ed8' : 'transparent',
+                        'opacity': showUnionNodes ? 1 : 0,
+                        'events': showUnionNodes ? 'yes' : 'no',
                         'label': ''
                     }
                 },
