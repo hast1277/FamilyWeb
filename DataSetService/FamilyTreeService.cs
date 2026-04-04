@@ -48,14 +48,21 @@ public sealed class FamilyTreeService
         personCmd.Parameters.Add(personIdParam);
 
         using var famCmd = conn.CreateCommand();
-        famCmd.CommandText = "SELECT IndividualType, IndividualID, FamilyAncestor FROM \"Families\" WHERE ID = @familyId";
+        famCmd.CommandText = "SELECT IndividualType, IndividualID, FamilyAncestor FROM \"Families\" WHERE trim(CAST(ID AS TEXT)) = @familyId";
         var famIdParam = famCmd.CreateParameter();
         famIdParam.ParameterName = "@familyId";
         famCmd.Parameters.Add(famIdParam);
 
+        using var parentFamiliesCmd = conn.CreateCommand();
+        parentFamiliesCmd.CommandText = "SELECT DISTINCT CAST(trim(CAST(ID AS TEXT)) AS INTEGER) FROM \"Families\" WHERE IndividualType = 'PAR' AND trim(CAST(IndividualID AS TEXT)) = @personId";
+        var parentFamiliesPersonIdParam = parentFamiliesCmd.CreateParameter();
+        parentFamiliesPersonIdParam.ParameterName = "@personId";
+        parentFamiliesCmd.Parameters.Add(parentFamiliesPersonIdParam);
+
         // --- Local caches ---
         var persons = new Dictionary<long, PersonLite>();
         var families = new Dictionary<long, FamilyInfo>();
+        var parentFamiliesByPerson = new Dictionary<long, List<long>>();
 
         PersonLite? LoadPerson(long id)
         {
@@ -136,6 +143,29 @@ public sealed class FamilyTreeService
             return info;
         }
 
+        List<long> GetParentFamilies(long personId)
+        {
+            if (parentFamiliesByPerson.TryGetValue(personId, out var cached))
+                return cached;
+
+            parentFamiliesPersonIdParam.Value = personId.ToString(CultureInfo.InvariantCulture);
+            using var dr = parentFamiliesCmd.ExecuteReader();
+
+            var familyIds = new List<long>();
+            while (dr.Read())
+            {
+                var familyIdValue = dr.GetValue(0)?.ToString();
+                if (string.IsNullOrWhiteSpace(familyIdValue))
+                    continue;
+
+                familyIds.Add(Convert.ToInt64(familyIdValue, CultureInfo.InvariantCulture));
+            }
+
+            familyIds = familyIds.Distinct().OrderBy(id => id).ToList();
+            parentFamiliesByPerson[personId] = familyIds;
+            return familyIds;
+        }
+
         static string PersonNodeId(long personId) => $"p:{personId}";
         static string UnionNodeId(long familyId) => $"u:{familyId}";
 
@@ -184,6 +214,8 @@ public sealed class FamilyTreeService
             if (p.SpouseFamily1 is not null) spouseFamilies.Add(p.SpouseFamily1.Value);
             if (buildOptions.IncludeSpouseFamily2 && p.SpouseFamily2 is not null && p.SpouseFamily2 != p.SpouseFamily1)
                 spouseFamilies.Add(p.SpouseFamily2.Value);
+            spouseFamilies.AddRange(GetParentFamilies(personId));
+            spouseFamilies = spouseFamilies.Distinct().ToList();
 
             foreach (var familyId in spouseFamilies)
             {
@@ -291,8 +323,25 @@ public sealed class FamilyTreeService
             {
                 var p = GetPerson(personId);
                 if (p is null) return null;
-                if (p.SpouseFamily1 is not null) return p.SpouseFamily1;
-                return p.SpouseFamily2;
+
+                var candidateFamilyIds = families.Values
+                    .Where(family => family.ParentIds.Contains(personId))
+                    .Select(family => family.FamilyId)
+                    .Distinct()
+                    .ToList();
+
+                if (candidateFamilyIds.Count == 0)
+                {
+                    if (p.SpouseFamily1 is not null) return p.SpouseFamily1;
+                    return p.SpouseFamily2;
+                }
+
+                return candidateFamilyIds
+                    .OrderByDescending(familyId => families[familyId].ParentIds.Count)
+                    .ThenByDescending(familyId => families[familyId].ChildIds.Count)
+                    .ThenBy(familyId => familyId == p.SpouseFamily1 ? 0 : familyId == p.SpouseFamily2 ? 1 : 2)
+                    .ThenBy(familyId => familyId)
+                    .First();
             }
 
             int gap = Math.Max(0, opts.SiblingGapSlots);

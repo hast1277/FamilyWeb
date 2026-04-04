@@ -42,7 +42,9 @@ internal static class PersonReadDefinition
                p.IsSpouseInFamily2
         FROM Persons p";
 
-    internal const string SelectByIdWithDeathDate = SelectColumnsWithDeathDate + " WHERE p.ID = @id";
+    // Some legacy datasets mix TEXT and INTEGER values in ID columns.
+    // Compare normalized text values so lookups work regardless of storage type.
+    internal const string SelectByIdWithDeathDate = SelectColumnsWithDeathDate + " WHERE trim(CAST(p.ID AS TEXT)) = @id";
 
     internal static PersonReadModel Map(SqliteDataReader dr)
     {

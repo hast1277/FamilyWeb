@@ -97,7 +97,7 @@ public class PersonService
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "UPDATE Persons SET Photo = @photo WHERE ID = @id";
+        cmd.CommandText = "UPDATE Persons SET Photo = @photo WHERE trim(CAST(ID AS TEXT)) = @id";
         cmd.Parameters.AddWithValue("@photo", photoFileName);
         cmd.Parameters.AddWithValue("@id", id.ToString());
         cmd.ExecuteNonQuery();
@@ -115,7 +115,7 @@ public class PersonService
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM \"Families\" WHERE ID = @familyId";
+        cmd.CommandText = "SELECT * FROM \"Families\" WHERE trim(CAST(ID AS TEXT)) = @familyId";
         cmd.Parameters.AddWithValue("@familyId", familyId.ToString());
         using var dr = cmd.ExecuteReader();
         var result = new List<FamilyRelation>();
