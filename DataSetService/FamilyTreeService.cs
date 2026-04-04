@@ -388,6 +388,7 @@ public sealed class FamilyTreeService
     private static class FamilyTreeLayout
     {
         internal readonly record struct Pos(double X, double Y, int Depth);
+        private const double SingleParentUnionOffset = 0.42;
 
         public static Dictionary<string, Pos> ComputePositions(
             long rootPersonId,
@@ -466,7 +467,10 @@ public sealed class FamilyTreeService
 
                 // Center family on its child span when possible
                 double unionX = (xSlotStart + familyWidth / 2.0) * opts.ColSpacing;
-                double unionY = depth * opts.RowSpacing;
+                double personY = depth * opts.RowSpacing;
+                double unionY = fam.ParentIds.Count == 1
+                    ? personY + (opts.RowSpacing * SingleParentUnionOffset)
+                    : personY;
 
                 pos[U(familyId)] = new Pos(unionX, unionY, depth);
 
@@ -477,7 +481,7 @@ public sealed class FamilyTreeService
                 }
                 else if (fam.ParentIds.Count == 1)
                 {
-                    pos[P(fam.ParentIds[0])] = new Pos(unionX, unionY, depth);
+                    pos[P(fam.ParentIds[0])] = new Pos(unionX, personY, depth);
                 }
                 else
                 {
@@ -485,13 +489,13 @@ public sealed class FamilyTreeService
                     var leftParent = fam.ParentIds[0];
                     var rightParent = fam.ParentIds[1];
 
-                    pos[P(leftParent)] = new Pos(unionX - opts.SpouseSpacing / 2.0, unionY, depth);
-                    pos[P(rightParent)] = new Pos(unionX + opts.SpouseSpacing / 2.0, unionY, depth);
+                    pos[P(leftParent)] = new Pos(unionX - opts.SpouseSpacing / 2.0, personY, depth);
+                    pos[P(rightParent)] = new Pos(unionX + opts.SpouseSpacing / 2.0, personY, depth);
 
                     // Any extra parents (unexpected) are stacked near union
                     for (int i = 2; i < fam.ParentIds.Count; i++)
                     {
-                        pos[P(fam.ParentIds[i])] = new Pos(unionX + (i - 1) * 10, unionY, depth);
+                        pos[P(fam.ParentIds[i])] = new Pos(unionX + (i - 1) * 10, personY, depth);
                     }
                 }
 
@@ -535,22 +539,42 @@ public sealed class FamilyTreeService
 
                 double unionX;
                 int depth;
+                double personY;
+                double unionY;
                 if (hasPositionedParent)
                 {
                     var anchor = pos[P(positionedParent)];
                     depth = anchor.Depth;
-                    unionX = anchor.X + opts.SpouseSpacing;
-                    while (IsOccupied(unionX, anchor.Y))
-                        unionX += opts.ColSpacing;
+                    personY = anchor.Y;
+
+                    if (fam.ParentIds.Count == 1)
+                    {
+                        unionX = anchor.X;
+                        unionY = anchor.Y + (opts.RowSpacing * SingleParentUnionOffset);
+                        while (IsOccupied(unionX, unionY))
+                            unionY += opts.RowSpacing * 0.12;
+                    }
+                    else
+                    {
+                        unionX = anchor.X + opts.SpouseSpacing;
+                        while (IsOccupied(unionX, anchor.Y))
+                            unionX += opts.ColSpacing;
+
+                        unionY = anchor.Y;
+                    }
                 }
                 else
                 {
                     depth = Math.Max(0, maxDepth);
+                    personY = depth * opts.RowSpacing;
                     unionX = spilloverColumn;
                     spilloverColumn += opts.ColSpacing * 2;
+
+                    unionY = fam.ParentIds.Count == 1
+                        ? personY + (opts.RowSpacing * SingleParentUnionOffset)
+                        : personY;
                 }
 
-                var unionY = depth * opts.RowSpacing;
                 pos[U(familyId)] = new Pos(unionX, unionY, depth);
 
                 // Parents on union depth
@@ -558,7 +582,7 @@ public sealed class FamilyTreeService
                 {
                     var parentId = fam.ParentIds[0];
                     if (!pos.ContainsKey(P(parentId)))
-                        pos[P(parentId)] = new Pos(unionX, unionY, depth);
+                        pos[P(parentId)] = new Pos(unionX, personY, depth);
                 }
                 else if (fam.ParentIds.Count > 1)
                 {
@@ -569,7 +593,7 @@ public sealed class FamilyTreeService
                             continue;
 
                         var offset = (i - ((fam.ParentIds.Count - 1) / 2.0)) * opts.SpouseSpacing;
-                        pos[P(parentId)] = new Pos(unionX + offset, unionY, depth);
+                        pos[P(parentId)] = new Pos(unionX + offset, personY, depth);
                     }
                 }
 
