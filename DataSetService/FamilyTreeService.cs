@@ -170,7 +170,38 @@ public sealed class FamilyTreeService
         static string UnionNodeId(long familyId) => $"u:{familyId}";
 
         var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo, string? Birthday, string? DeathDate)>();
+        var spouseNotesByPerson = new Dictionary<long, List<string>>();
         var edges = new HashSet<(string From, string To, string Type, string? Label)>();
+
+        static string FormatPersonName(PersonLite p)
+        {
+            var label = ($"{p.FirstName} {p.SurName}").Trim();
+            return string.IsNullOrWhiteSpace(label) ? $"Person {p.Id}" : label;
+        }
+
+        static string FormatPartnerLine(PersonLite p, long familyId)
+        {
+            var parts = new List<string> { $"partner: {FormatPersonName(p)} ({p.Id})", $"fam {familyId}" };
+            if (!string.IsNullOrWhiteSpace(p.Birthday)) parts.Add($"* {p.Birthday}");
+            if (!string.IsNullOrWhiteSpace(p.DeathDate)) parts.Add($"† {p.DeathDate}");
+            return string.Join(" | ", parts);
+        }
+
+        string BuildPersonLabel(PersonLite p)
+        {
+            var label = FormatPersonName(p);
+            if (!spouseNotesByPerson.TryGetValue(p.Id, out var notes) || notes.Count == 0)
+                return label;
+
+            var distinctNotes = notes
+                .Where(note => !string.IsNullOrWhiteSpace(note))
+                .Distinct()
+                .ToList();
+
+            return distinctNotes.Count == 0
+                ? label
+                : string.Join("\n", new[] { label }.Concat(distinctNotes));
+        }
 
         void EnsurePersonNode(long personId)
         {
@@ -179,8 +210,7 @@ public sealed class FamilyTreeService
             var p = LoadPerson(personId);
             if (p is null) return;
 
-            var label = ($"{p.FirstName} {p.SurName}").Trim();
-            if (string.IsNullOrWhiteSpace(label)) label = $"Person {p.Id}";
+            var label = BuildPersonLabel(p);
 
             nodeBases[nid] = ("person", p.Id, label, p.Photo, p.Birthday, p.DeathDate);
         }
@@ -225,8 +255,33 @@ public sealed class FamilyTreeService
                 EnsureUnionNode(familyId);
                 var fam = LoadFamily(familyId);
 
+                var anchorParentId = fam.ParentIds.Contains(personId)
+                    ? personId
+                    : (fam.AncestorParentId ?? fam.ParentIds.FirstOrDefault());
+                var visibleParentIds = anchorParentId == 0
+                    ? fam.ParentIds
+                    : new List<long> { anchorParentId };
+
+                if (anchorParentId != 0)
+                {
+                    foreach (var spouseParentId in fam.ParentIds.Where(id => id != anchorParentId))
+                    {
+                        var spouse = LoadPerson(spouseParentId);
+                        if (spouse is null)
+                            continue;
+
+                        if (!spouseNotesByPerson.TryGetValue(anchorParentId, out var notes))
+                        {
+                            notes = new List<string>();
+                            spouseNotesByPerson[anchorParentId] = notes;
+                        }
+
+                        notes.Add(FormatPartnerLine(spouse, familyId));
+                    }
+                }
+
                 // Parents/spouses
-                foreach (var parentId in fam.ParentIds)
+                foreach (var parentId in visibleParentIds)
                 {
                     EnsurePersonNode(parentId);
                     if (!HasPersonNode(parentId))
@@ -273,6 +328,23 @@ public sealed class FamilyTreeService
             persons,
             families,
             layoutOptions);
+
+        // Re-apply labels after spouse notes were accumulated while traversing families.
+        foreach (var personNode in nodeBases.Where(kvp => kvp.Value.Type == "person" && kvp.Value.PersonId is not null).ToList())
+        {
+            var personId = personNode.Value.PersonId!.Value;
+            var person = LoadPerson(personId);
+            if (person is null)
+                continue;
+
+            nodeBases[personNode.Key] = (
+                personNode.Value.Type,
+                personNode.Value.PersonId,
+                BuildPersonLabel(person),
+                personNode.Value.Photo,
+                personNode.Value.Birthday,
+                personNode.Value.DeathDate);
+        }
 
         var nodes = nodeBases.Select(kvp =>
         {
