@@ -59,6 +59,79 @@ window.familyTree = (() => {
         return { rows, cols, pages: rows * cols };
     }
 
+    function resolvePersonNodeOverlaps() {
+        if (!cy) {
+            return;
+        }
+
+        const rowBucketSize = 10;
+        const minGap = 28;
+        const rows = new Map();
+
+        cy.nodes('[nodeType = "person"]').forEach(node => {
+            const rowKey = Math.round(node.position('y') / rowBucketSize) * rowBucketSize;
+            if (!rows.has(rowKey)) {
+                rows.set(rowKey, []);
+            }
+
+            rows.get(rowKey).push({
+                node,
+                originalX: node.position('x')
+            });
+        });
+
+        cy.batch(() => {
+            for (const row of rows.values()) {
+                if (row.length < 2) {
+                    continue;
+                }
+
+                row.sort((left, right) => left.originalX - right.originalX);
+
+                for (let index = 1; index < row.length; index++) {
+                    const previous = row[index - 1].node;
+                    const current = row[index].node;
+                    const previousRight = previous.position('x') + (previous.width() / 2);
+                    const currentLeft = current.position('x') - (current.width() / 2);
+                    const overlap = (previousRight + minGap) - currentLeft;
+
+                    if (overlap > 0) {
+                        current.position({
+                            x: current.position('x') + overlap,
+                            y: current.position('y')
+                        });
+                    }
+                }
+
+                const originalCenter = (row[0].originalX + row[row.length - 1].originalX) / 2;
+                const adjustedCenter = (row[0].node.position('x') + row[row.length - 1].node.position('x')) / 2;
+                const recenterOffset = originalCenter - adjustedCenter;
+
+                if (Math.abs(recenterOffset) > 0.5) {
+                    for (const item of row) {
+                        item.node.position({
+                            x: item.node.position('x') + recenterOffset,
+                            y: item.node.position('y')
+                        });
+                    }
+
+                    for (let index = 1; index < row.length; index++) {
+                        const previous = row[index - 1].node;
+                        const current = row[index].node;
+                        const requiredX = previous.position('x') + (previous.width() / 2) + (current.width() / 2) + minGap;
+
+                        if (current.position('x') < requiredX) {
+                            current.position({
+                                x: requiredX,
+                                y: current.position('y')
+                            });
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function init(dotNetReference, containerId, nodes, edges) {
         dotNetRef = dotNetReference;
 
@@ -90,7 +163,9 @@ window.familyTree = (() => {
                     id: `e-${e.fromId}-${e.toId}`,
                     source: e.fromId,
                     target: e.toId,
-                    edgeType: e.type
+                    edgeType: e.type,
+                    label: e.label ?? '',
+                    curveStyle: e.type === 'child' ? 'taxi' : 'straight'
                 }
             }))
         ];
@@ -158,7 +233,8 @@ window.familyTree = (() => {
                     style: {
                         'width': 2,
                         'line-color': '#94a3b8',
-                        'curve-style': 'straight',
+                        'curve-style': 'data(curveStyle)',
+                        'line-cap': 'round',
                         'target-arrow-shape': 'none'
                     }
                 },
@@ -167,10 +243,13 @@ window.familyTree = (() => {
                     style: {
                         'width': 1.5,
                         'line-color': '#64748b',
-                        'curve-style': 'straight',
-                        'target-arrow-shape': 'triangle',
-                        'target-arrow-color': '#64748b',
-                        'arrow-scale': 1.2
+                        'curve-style': 'data(curveStyle)',
+                        'edge-distances': 'node-position',
+                        'taxi-direction': 'downward',
+                        'taxi-turn': 28,
+                        'taxi-turn-min-distance': 18,
+                        'line-cap': 'round',
+                        'target-arrow-shape': 'none'
                     }
                 }
             ],
@@ -188,6 +267,7 @@ window.familyTree = (() => {
             }
         });
 
+        resolvePersonNodeOverlaps();
         cy.fit(cy.elements(), 40);
     }
 

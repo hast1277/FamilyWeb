@@ -56,6 +56,7 @@ public sealed record TreeEdgeDto
     public required string FromId { get; init; }
     public required string ToId { get; init; }
     public required string Type { get; init; } // "spouse" | "child"
+    public string? Label { get; init; }
 }
 
 public sealed record FamilyTreeDto
