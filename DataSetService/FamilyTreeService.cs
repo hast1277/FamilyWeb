@@ -171,7 +171,7 @@ public sealed class FamilyTreeService
 
         var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo, string? Birthday, string? DeathDate)>();
         var spouseNotesByPerson = new Dictionary<long, List<string>>();
-        var edges = new HashSet<(string From, string To, string Type)>();
+        var edges = new HashSet<(string From, string To, string Type, string? Label)>();
 
         static string FormatName(PersonLite p)
         {
