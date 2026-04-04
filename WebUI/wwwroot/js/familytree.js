@@ -61,7 +61,8 @@ window.familyTree = (() => {
                     id: `e-${e.fromId}-${e.toId}`,
                     source: e.fromId,
                     target: e.toId,
-                    edgeType: e.type
+                    edgeType: e.type,
+                    label: e.label ?? ''
                 }
             }))
         ];
@@ -143,7 +144,14 @@ window.familyTree = (() => {
                         'curve-style': 'straight',
                         'target-arrow-shape': 'triangle',
                         'target-arrow-color': '#64748b',
-                        'arrow-scale': 1.2
+                        'arrow-scale': 1.2,
+                        'label': 'data(label)',
+                        'font-size': 9,
+                        'color': '#0f172a',
+                        'text-background-color': '#ffffff',
+                        'text-background-opacity': 0.9,
+                        'text-background-padding': 2,
+                        'text-margin-y': -6
                     }
                 }
             ],

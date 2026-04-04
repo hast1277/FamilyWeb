@@ -170,7 +170,7 @@ public sealed class FamilyTreeService
         static string UnionNodeId(long familyId) => $"u:{familyId}";
 
         var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo, string? Birthday, string? DeathDate)>();
-        var edges = new HashSet<(string From, string To, string Type)>();
+        var edges = new HashSet<(string From, string To, string Type, string? Label)>();
 
         void EnsurePersonNode(long personId)
         {
@@ -232,7 +232,7 @@ public sealed class FamilyTreeService
                     if (!HasPersonNode(parentId))
                         continue;
 
-                    edges.Add((PersonNodeId(parentId), UnionNodeId(familyId), "spouse"));
+                    edges.Add((PersonNodeId(parentId), UnionNodeId(familyId), "spouse", null));
                 }
 
                 // Children
@@ -242,7 +242,7 @@ public sealed class FamilyTreeService
                     if (!HasPersonNode(childId))
                         continue;
 
-                    edges.Add((UnionNodeId(familyId), PersonNodeId(childId), "child"));
+                    edges.Add((UnionNodeId(familyId), PersonNodeId(childId), "child", familyId.ToString(CultureInfo.InvariantCulture)));
 
                     if (nodeBases.Count >= buildOptions.MaxNodes)
                         continue;
@@ -293,10 +293,11 @@ public sealed class FamilyTreeService
             };
         }).OrderBy(n => n.Type).ThenBy(n => n.PersonId ?? long.MaxValue).ThenBy(n => n.Id).ToList();
 
-        var edgeDtos = edges.Select(e => new TreeEdgeDto { FromId = e.From, ToId = e.To, Type = e.Type })
+        var edgeDtos = edges.Select(e => new TreeEdgeDto { FromId = e.From, ToId = e.To, Type = e.Type, Label = e.Label })
             .OrderBy(e => e.Type)
             .ThenBy(e => e.FromId)
             .ThenBy(e => e.ToId)
+            .ThenBy(e => e.Label)
             .ToList();
 
         return new FamilyTreeDto { Nodes = nodes, Edges = edgeDtos };
@@ -425,6 +426,92 @@ public sealed class FamilyTreeService
             else
             {
                 LayoutPerson(rootPersonId, depth: 0, xSlotStart: 0);
+            }
+
+            // Fallback placement for families not reached by the primary-family recursion.
+            // This prevents nodes from collapsing at (0,0) when a person belongs to multiple families.
+            var maxX = pos.Count == 0 ? 0 : pos.Values.Max(p => p.X);
+            var maxDepth = pos.Count == 0 ? 0 : pos.Values.Max(p => p.Depth);
+            var spilloverColumn = maxX + (opts.ColSpacing * 2);
+
+            bool IsOccupied(double x, double y)
+            {
+                const double epsilon = 0.5;
+                return pos.Values.Any(p => Math.Abs(p.X - x) < epsilon && Math.Abs(p.Y - y) < epsilon);
+            }
+
+            void PlaceUnpositionedFamily(long familyId)
+            {
+                if (!families.TryGetValue(familyId, out var fam))
+                    return;
+
+                if (pos.ContainsKey(U(familyId)))
+                    return;
+
+                var positionedParent = fam.ParentIds.FirstOrDefault(parentId => pos.ContainsKey(P(parentId)));
+                var hasPositionedParent = positionedParent != 0;
+
+                double unionX;
+                int depth;
+                if (hasPositionedParent)
+                {
+                    var anchor = pos[P(positionedParent)];
+                    depth = anchor.Depth;
+                    unionX = anchor.X + opts.SpouseSpacing;
+                    while (IsOccupied(unionX, anchor.Y))
+                        unionX += opts.ColSpacing;
+                }
+                else
+                {
+                    depth = Math.Max(0, maxDepth);
+                    unionX = spilloverColumn;
+                    spilloverColumn += opts.ColSpacing * 2;
+                }
+
+                var unionY = depth * opts.RowSpacing;
+                pos[U(familyId)] = new Pos(unionX, unionY, depth);
+
+                // Parents on union depth
+                if (fam.ParentIds.Count == 1)
+                {
+                    var parentId = fam.ParentIds[0];
+                    if (!pos.ContainsKey(P(parentId)))
+                        pos[P(parentId)] = new Pos(unionX, unionY, depth);
+                }
+                else if (fam.ParentIds.Count > 1)
+                {
+                    for (int i = 0; i < fam.ParentIds.Count; i++)
+                    {
+                        var parentId = fam.ParentIds[i];
+                        if (pos.ContainsKey(P(parentId)))
+                            continue;
+
+                        var offset = (i - ((fam.ParentIds.Count - 1) / 2.0)) * opts.SpouseSpacing;
+                        pos[P(parentId)] = new Pos(unionX + offset, unionY, depth);
+                    }
+                }
+
+                // Children one row below union
+                if (fam.ChildIds.Count == 0)
+                    return;
+
+                var childDepth = depth + 1;
+                var childY = childDepth * opts.RowSpacing;
+                var startX = unionX - ((fam.ChildIds.Count - 1) * opts.ColSpacing / 2.0);
+
+                for (int i = 0; i < fam.ChildIds.Count; i++)
+                {
+                    var childId = fam.ChildIds[i];
+                    if (pos.ContainsKey(P(childId)))
+                        continue;
+
+                    pos[P(childId)] = new Pos(startX + (i * opts.ColSpacing), childY, childDepth);
+                }
+            }
+
+            foreach (var familyId in families.Keys.OrderBy(id => id))
+            {
+                PlaceUnpositionedFamily(familyId);
             }
 
             return pos;
