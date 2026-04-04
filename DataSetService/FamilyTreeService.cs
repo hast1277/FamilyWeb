@@ -171,9 +171,9 @@ public sealed class FamilyTreeService
 
         var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo, string? Birthday, string? DeathDate)>();
         var spouseNotesByPerson = new Dictionary<long, List<string>>();
-        var edges = new HashSet<(string From, string To, string Type, string? Label)>();
+        var edges = new HashSet<(string From, string To, string Type)>();
 
-        static string FormatPersonName(PersonLite p)
+        static string FormatName(PersonLite p)
         {
             var label = ($"{p.FirstName} {p.SurName}").Trim();
             return string.IsNullOrWhiteSpace(label) ? $"Person {p.Id}" : label;
@@ -181,7 +181,7 @@ public sealed class FamilyTreeService
 
         static string FormatPartnerLine(PersonLite p, long familyId)
         {
-            var parts = new List<string> { $"partner: {FormatPersonName(p)} ({p.Id})", $"fam {familyId}" };
+            var parts = new List<string> { $"partner: {FormatName(p)} ({p.Id})", $"fam {familyId}" };
             if (!string.IsNullOrWhiteSpace(p.Birthday)) parts.Add($"* {p.Birthday}");
             if (!string.IsNullOrWhiteSpace(p.DeathDate)) parts.Add($"† {p.DeathDate}");
             return string.Join(" | ", parts);
@@ -189,9 +189,9 @@ public sealed class FamilyTreeService
 
         string BuildPersonLabel(PersonLite p)
         {
-            var label = FormatPersonName(p);
+            var baseLabel = FormatName(p);
             if (!spouseNotesByPerson.TryGetValue(p.Id, out var notes) || notes.Count == 0)
-                return label;
+                return baseLabel;
 
             var distinctNotes = notes
                 .Where(note => !string.IsNullOrWhiteSpace(note))
@@ -199,8 +199,8 @@ public sealed class FamilyTreeService
                 .ToList();
 
             return distinctNotes.Count == 0
-                ? label
-                : string.Join("\n", new[] { label }.Concat(distinctNotes));
+                ? baseLabel
+                : string.Join("\n", new[] { baseLabel }.Concat(distinctNotes));
         }
 
         void EnsurePersonNode(long personId)
@@ -255,9 +255,20 @@ public sealed class FamilyTreeService
                 EnsureUnionNode(familyId);
                 var fam = LoadFamily(familyId);
 
-                var anchorParentId = fam.ParentIds.Contains(personId)
-                    ? personId
-                    : (fam.AncestorParentId ?? fam.ParentIds.FirstOrDefault());
+                long anchorParentId = 0;
+                if (fam.ParentIds.Contains(rootPersonId))
+                    anchorParentId = rootPersonId;
+                else if (fam.ParentIds.Contains(personId))
+                    anchorParentId = personId;
+                else
+                {
+                    anchorParentId = fam.ParentIds
+                        .FirstOrDefault(parentId => nodeBases.ContainsKey(PersonNodeId(parentId)));
+
+                    if (anchorParentId == 0)
+                        anchorParentId = fam.AncestorParentId ?? fam.ParentIds.FirstOrDefault();
+                }
+
                 var visibleParentIds = anchorParentId == 0
                     ? fam.ParentIds
                     : new List<long> { anchorParentId };
@@ -329,11 +340,10 @@ public sealed class FamilyTreeService
             families,
             layoutOptions);
 
-        // Re-apply labels after spouse notes were accumulated while traversing families.
         foreach (var personNode in nodeBases.Where(kvp => kvp.Value.Type == "person" && kvp.Value.PersonId is not null).ToList())
         {
-            var personId = personNode.Value.PersonId!.Value;
-            var person = LoadPerson(personId);
+            var pid = personNode.Value.PersonId!.Value;
+            var person = LoadPerson(pid);
             if (person is null)
                 continue;
 
