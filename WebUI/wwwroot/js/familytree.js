@@ -4,6 +4,35 @@ window.familyTree = (() => {
     let cy = null;
     let dotNetRef = null;
 
+    function getPersonNodeMetrics(ele) {
+        const label = (ele.data('label') ?? '').toString();
+        const lines = label.split('\n').filter(line => line.length > 0);
+        const lineCount = Math.max(1, lines.length);
+        const longestLineChars = lines.length === 0
+            ? 0
+            : Math.max(...lines.map(line => line.length));
+
+        const hasPhoto = !!ele.data('photo');
+        const textWidth = Math.min(420, Math.max(120, (longestLineChars * 6.4) + 26));
+        const width = hasPhoto
+            ? Math.max(190, textWidth + 72)
+            : Math.max(160, textWidth + 24);
+
+        const minHeight = hasPhoto ? 98 : 74;
+        const height = Math.min(420, Math.max(minHeight, 24 + (lineCount * 15)));
+
+        const textMaxWidth = hasPhoto
+            ? Math.max(96, width - 70)
+            : Math.max(120, width - 20);
+
+        return {
+            width,
+            height,
+            textMaxWidth,
+            textMarginX: hasPhoto ? 28 : 0
+        };
+    }
+
     function getPageGrid(scaleFactor = 1.0, orientation = 'landscape') {
         if (!cy) {
             return { rows: 0, cols: 0, pages: 0 };
@@ -75,8 +104,8 @@ window.familyTree = (() => {
                     selector: 'node[nodeType="person"]',
                     style: {
                         'shape': 'round-rectangle',
-                        'width': 180,
-                        'height': 98,
+                        'width': ele => getPersonNodeMetrics(ele).width,
+                        'height': ele => getPersonNodeMetrics(ele).height,
                         'background-color': '#ffffff',
                         'background-image': ele => ele.data('photo') || 'none',
                         'background-fit': 'none',
@@ -87,10 +116,10 @@ window.familyTree = (() => {
                         'label': 'data(label)',
                         'font-size': 11,
                         'text-wrap': 'wrap',
-                        'text-max-width': 108,
+                        'text-max-width': ele => getPersonNodeMetrics(ele).textMaxWidth,
                         'text-valign': 'center',
                         'text-halign': 'center',
-                        'text-margin-x': 28,
+                        'text-margin-x': ele => getPersonNodeMetrics(ele).textMarginX,
                         'color': '#1e3a5f',
                         'font-weight': 'bold',
                         'border-width': 1.5,
@@ -101,9 +130,7 @@ window.familyTree = (() => {
                 {
                     selector: 'node[nodeType="person"][!photo]',
                     style: {
-                        'background-color': '#dbeafe',
-                        'text-margin-x': 0,
-                        'text-max-width': 160
+                        'background-color': '#dbeafe'
                     }
                 },
                 {
