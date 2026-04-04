@@ -133,6 +133,92 @@ window.familyTree = (() => {
         });
     }
 
+    function updateChildLabelPlacement() {
+        if (!cy) {
+            return;
+        }
+
+        const baseOffset = 52;
+        const extraPadding = 8;
+        const minVisibleVertical = 22;
+
+        cy.batch(() => {
+            cy.edges('[edgeType = "child"]').forEach(edge => {
+                const source = edge.source();
+                const target = edge.target();
+
+                if (source.empty() || target.empty()) {
+                    edge.data('labelDx', 0);
+                    edge.data('labelOffset', baseOffset);
+                    edge.data('edgeLabel', edge.data('label') ?? '');
+                    edge.data('sourceLabel', '');
+                    return;
+                }
+
+                let maxClearance = 0;
+                cy.edges('[edgeType = "spouse"]').forEach(spouseEdge => {
+                    if (spouseEdge.target().id() !== source.id()) {
+                        return;
+                    }
+
+                    const parentNode = spouseEdge.source();
+                    if (parentNode.empty() || parentNode.data('nodeType') !== 'person') {
+                        return;
+                    }
+
+                    const parentBottom = parentNode.position('y') + (parentNode.height() / 2);
+                    const clearance = parentBottom - source.position('y');
+                    if (clearance > maxClearance) {
+                        maxClearance = clearance;
+                    }
+                });
+
+                const deltaX = target.position('x') - source.position('x');
+                const deltaY = Math.max(0, target.position('y') - source.position('y'));
+                const hasHorizontalSection = Math.abs(deltaX) > 8;
+                const isMostlyHorizontal = deltaY < 16;
+
+                if (isMostlyHorizontal) {
+                    edge.data('labelDx', 0);
+                    edge.data('labelOffset', baseOffset);
+                    edge.data('taxiTurn', 18);
+                    edge.data('edgeLabel', edge.data('label') ?? '');
+                    edge.data('sourceLabel', '');
+                    return;
+                }
+
+                // Estimate first vertical segment length used by taxi routing.
+                let verticalSegmentLength = hasHorizontalSection
+                    ? Math.max(30, Math.min(120, deltaY * 0.42))
+                    : Math.max(30, Math.min(220, deltaY * 0.5));
+
+                const maxPossibleVertical = Math.max(18, deltaY - 10);
+                verticalSegmentLength = Math.min(verticalSegmentLength, maxPossibleVertical);
+
+                const clearanceStart = Math.max(0, maxClearance + extraPadding);
+                if (hasHorizontalSection && verticalSegmentLength < clearanceStart + minVisibleVertical) {
+                    verticalSegmentLength = Math.min(maxPossibleVertical, clearanceStart + minVisibleVertical);
+                }
+
+                const visibleStart = Math.min(clearanceStart, verticalSegmentLength);
+                const visibleEnd = Math.max(visibleStart, verticalSegmentLength);
+                const labelOffset = visibleStart + ((visibleEnd - visibleStart) / 2);
+
+                const labelDx = target.position('x') < (source.position('x') - 8)
+                    ? -14
+                    : target.position('x') > (source.position('x') + 8)
+                        ? 14
+                        : 0;
+
+                edge.data('labelDx', labelDx);
+                edge.data('labelOffset', Math.max(baseOffset, labelOffset));
+                edge.data('taxiTurn', Math.max(18, verticalSegmentLength));
+                edge.data('edgeLabel', '');
+                edge.data('sourceLabel', edge.data('label') ?? '');
+            });
+        });
+    }
+
     function init(dotNetReference, containerId, nodes, edges) {
         dotNetRef = dotNetReference;
 
@@ -161,6 +247,13 @@ window.familyTree = (() => {
             })),
             ...edges.map(e => ({
                 data: {
+                    ...(function() {
+                        return {
+                            labelDx: 0,
+                            labelOffset: 52,
+                            taxiTurn: 28
+                        };
+                    })(),
                     id: `e-${e.fromId}-${e.toId}`,
                     source: e.fromId,
                     target: e.toId,
@@ -249,9 +342,21 @@ window.familyTree = (() => {
                         'curve-style': 'data(curveStyle)',
                         'edge-distances': 'node-position',
                         'taxi-direction': 'downward',
-                        'taxi-turn': 28,
+                        'taxi-turn': 'data(taxiTurn)',
                         'taxi-turn-min-distance': 18,
                         'line-cap': 'round',
+                        'label': 'data(edgeLabel)',
+                        'source-label': 'data(sourceLabel)',
+                        'source-text-offset': 'data(labelOffset)',
+                        'source-text-margin-x': 'data(labelDx)',
+                        'source-text-margin-y': 4,
+                        'font-size': 10,
+                        'font-weight': 700,
+                        'color': '#1f2937',
+                        'text-background-color': '#ffffff',
+                        'text-background-opacity': 0.95,
+                        'text-background-padding': 2,
+                        'text-margin-y': -5,
                         'target-arrow-shape': 'none'
                     }
                 }
@@ -271,6 +376,7 @@ window.familyTree = (() => {
         });
 
         resolvePersonNodeOverlaps();
+        updateChildLabelPlacement();
         cy.fit(cy.elements(), 40);
     }
 

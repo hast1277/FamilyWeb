@@ -171,6 +171,8 @@ public sealed class FamilyTreeService
 
         var nodeBases = new Dictionary<string, (string Type, long? PersonId, string? Label, string? Photo, string? Birthday, string? DeathDate)>();
         var spouseNotesByPerson = new Dictionary<long, List<string>>();
+        var partnerNumberByPersonAndFamily = new Dictionary<long, Dictionary<long, int>>();
+        var anchorParentByFamily = new Dictionary<long, long>();
         var edges = new HashSet<(string From, string To, string Type, string? Label)>();
 
         static string FormatName(PersonLite p)
@@ -179,12 +181,28 @@ public sealed class FamilyTreeService
             return string.IsNullOrWhiteSpace(label) ? $"Person {p.Id}" : label;
         }
 
-        static string FormatPartnerLine(PersonLite p, long familyId)
+        static string FormatPartnerLine(PersonLite p, int partnerNumber)
         {
-            var parts = new List<string> { $"partner: {FormatName(p)} ({p.Id})", $"fam {familyId}" };
+            var parts = new List<string> { $"{partnerNumber}: {FormatName(p)} ({p.Id})" };
             if (!string.IsNullOrWhiteSpace(p.Birthday)) parts.Add($"* {p.Birthday}");
             if (!string.IsNullOrWhiteSpace(p.DeathDate)) parts.Add($"† {p.DeathDate}");
             return string.Join(" | ", parts);
+        }
+
+        int GetPartnerNumber(long personId, long familyId)
+        {
+            if (!partnerNumberByPersonAndFamily.TryGetValue(personId, out var familyNumbers))
+            {
+                familyNumbers = new Dictionary<long, int>();
+                partnerNumberByPersonAndFamily[personId] = familyNumbers;
+            }
+
+            if (familyNumbers.TryGetValue(familyId, out var existing))
+                return existing;
+
+            var next = familyNumbers.Count + 1;
+            familyNumbers[familyId] = next;
+            return next;
         }
 
         string BuildPersonLabel(PersonLite p)
@@ -275,6 +293,8 @@ public sealed class FamilyTreeService
 
                 if (anchorParentId != 0)
                 {
+                    anchorParentByFamily[familyId] = anchorParentId;
+
                     foreach (var spouseParentId in fam.ParentIds.Where(id => id != anchorParentId))
                     {
                         var spouse = LoadPerson(spouseParentId);
@@ -287,7 +307,8 @@ public sealed class FamilyTreeService
                             spouseNotesByPerson[anchorParentId] = notes;
                         }
 
-                        notes.Add(FormatPartnerLine(spouse, familyId));
+                        var partnerNumber = GetPartnerNumber(anchorParentId, familyId);
+                        notes.Add(FormatPartnerLine(spouse, partnerNumber));
                     }
                 }
 
@@ -308,7 +329,13 @@ public sealed class FamilyTreeService
                     if (!HasPersonNode(childId))
                         continue;
 
-                    edges.Add((UnionNodeId(familyId), PersonNodeId(childId), "child", familyId.ToString(CultureInfo.InvariantCulture)));
+                    string? childLabel = null;
+                    if (anchorParentId != 0)
+                    {
+                        childLabel = GetPartnerNumber(anchorParentId, familyId).ToString(CultureInfo.InvariantCulture);
+                    }
+
+                    edges.Add((UnionNodeId(familyId), PersonNodeId(childId), "child", childLabel));
 
                     if (nodeBases.Count >= buildOptions.MaxNodes)
                         continue;
@@ -375,7 +402,38 @@ public sealed class FamilyTreeService
             };
         }).OrderBy(n => n.Type).ThenBy(n => n.PersonId ?? long.MaxValue).ThenBy(n => n.Id).ToList();
 
-        var edgeDtos = edges.Select(e => new TreeEdgeDto { FromId = e.From, ToId = e.To, Type = e.Type, Label = e.Label })
+        static long? ParseFamilyIdFromUnionNodeId(string nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId) || !nodeId.StartsWith("u:", StringComparison.Ordinal))
+                return null;
+
+            var idText = nodeId[2..];
+            return long.TryParse(idText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var familyId)
+                ? familyId
+                : null;
+        }
+
+        bool ShouldShowChildLabel(long familyId)
+        {
+            if (!anchorParentByFamily.TryGetValue(familyId, out var anchorParentId))
+                return false;
+
+            return partnerNumberByPersonAndFamily.TryGetValue(anchorParentId, out var familyNumbers)
+                && familyNumbers.Count > 1;
+        }
+
+        var edgeDtos = edges.Select(e =>
+            {
+                var label = e.Label;
+                if (e.Type == "child")
+                {
+                    var familyId = ParseFamilyIdFromUnionNodeId(e.From);
+                    if (familyId is null || !ShouldShowChildLabel(familyId.Value))
+                        label = null;
+                }
+
+                return new TreeEdgeDto { FromId = e.From, ToId = e.To, Type = e.Type, Label = label };
+            })
             .OrderBy(e => e.Type)
             .ThenBy(e => e.FromId)
             .ThenBy(e => e.ToId)
@@ -388,7 +446,8 @@ public sealed class FamilyTreeService
     private static class FamilyTreeLayout
     {
         internal readonly record struct Pos(double X, double Y, int Depth);
-        private const double SingleParentUnionOffset = 0.42;
+        private const double SingleParentUnionOffsetDefault = 0.42;
+        private const double SingleParentUnionOffsetMultiPartner = 0.58;
 
         public static Dictionary<string, Pos> ComputePositions(
             long rootPersonId,
@@ -400,6 +459,18 @@ public sealed class FamilyTreeService
             static string U(long id) => $"u:{id}";
 
             var pos = new Dictionary<string, Pos>();
+            var parentFamilyCounts = families.Values
+                .SelectMany(family => family.ParentIds.Distinct().Select(parentId => (ParentId: parentId, FamilyId: family.FamilyId)))
+                .Distinct()
+                .GroupBy(link => link.ParentId)
+                .ToDictionary(group => group.Key, group => group.Count());
+
+            double GetSingleParentUnionOffset(long parentId)
+            {
+                return parentFamilyCounts.TryGetValue(parentId, out var familyCount) && familyCount > 1
+                    ? SingleParentUnionOffsetMultiPartner
+                    : SingleParentUnionOffsetDefault;
+            }
 
             PersonLite? GetPerson(long id) => persons.TryGetValue(id, out var p) ? p : null;
 
@@ -469,7 +540,7 @@ public sealed class FamilyTreeService
                 double unionX = (xSlotStart + familyWidth / 2.0) * opts.ColSpacing;
                 double personY = depth * opts.RowSpacing;
                 double unionY = fam.ParentIds.Count == 1
-                    ? personY + (opts.RowSpacing * SingleParentUnionOffset)
+                    ? personY + (opts.RowSpacing * GetSingleParentUnionOffset(fam.ParentIds[0]))
                     : personY;
 
                 pos[U(familyId)] = new Pos(unionX, unionY, depth);
@@ -550,7 +621,7 @@ public sealed class FamilyTreeService
                     if (fam.ParentIds.Count == 1)
                     {
                         unionX = anchor.X;
-                        unionY = anchor.Y + (opts.RowSpacing * SingleParentUnionOffset);
+                        unionY = anchor.Y + (opts.RowSpacing * GetSingleParentUnionOffset(fam.ParentIds[0]));
                         while (IsOccupied(unionX, unionY))
                             unionY += opts.RowSpacing * 0.12;
                     }
@@ -571,7 +642,7 @@ public sealed class FamilyTreeService
                     spilloverColumn += opts.ColSpacing * 2;
 
                     unionY = fam.ParentIds.Count == 1
-                        ? personY + (opts.RowSpacing * SingleParentUnionOffset)
+                        ? personY + (opts.RowSpacing * GetSingleParentUnionOffset(fam.ParentIds[0]))
                         : personY;
                 }
 
